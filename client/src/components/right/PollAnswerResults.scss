@@ -1,0 +1,71 @@
+.PollAnswerResults {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+
+  .answer-head {
+    display: flex;
+    gap: 0.5rem;
+    align-items: baseline;
+
+    padding: 0 0.5rem;
+
+    font-size: 0.9375rem;
+    color: var(--color-text-secondary);
+  }
+
+  .answer-title {
+    min-width: 0;
+    font-weight: var(--font-weight-medium);
+    overflow-wrap: anywhere;
+  }
+
+  .answer-count {
+    flex-shrink: 0;
+    margin-inline-start: auto;
+    white-space: nowrap;
+  }
+
+  .poll-voters {
+    position: relative;
+
+    .Spinner {
+      --spinner-size: 1.25rem;
+    }
+  }
+
+  .chat-item-clickable {
+    .ChatInfo .Avatar.size-tiny {
+      margin-right: 1.75rem;
+    }
+
+    &[dir="rtl"] {
+      .ChatInfo .Avatar.size-tiny {
+        margin-right: 0;
+        margin-left: 1.75rem;
+      }
+    }
+
+    .vote-date {
+      font-size: 0.875rem;
+      color: var(--color-text-secondary);
+    }
+  }
+
+  .ShowMoreButton {
+    margin: 0.25rem 0 0;
+
+    &[dir="rtl"] {
+      .icon-down {
+        margin-right: 0;
+        margin-left: 2rem;
+      }
+    }
+  }
+
+  .icon-down {
+    margin-right: 2rem;
+    font-size: 1.5rem;
+    vertical-align: middle;
+  }
+}

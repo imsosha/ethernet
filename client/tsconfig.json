@@ -1,0 +1,26 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "paths": {
+      "@teact": ["./src/lib/teact/teact.ts"],
+      "@teact/*": ["./src/lib/teact/*"],
+      "@gili/*": ["./src/components/gili/*"],
+      "qr-code-styling": ["./src/@types/qr-code-styling"]
+    },
+    "types": [
+      "dom-chromium-ai",
+      "dom-view-transitions",
+      "vite/client"
+    ],
+    "tsBuildInfoFile": ".cache/.tsconfig.tsbuildinfo"
+  },
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/lib/gramjs/tl/generateModules.ts",
+    "src/lib/gramjs/tl/types-generator"
+  ]
+}

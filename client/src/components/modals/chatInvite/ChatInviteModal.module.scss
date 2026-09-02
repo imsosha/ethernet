@@ -1,0 +1,34 @@
+.content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 2rem;
+}
+
+.title {
+  max-width: 100%;
+  padding-top: 1.125rem;
+  font-size: 1.375rem;
+}
+
+.participantCount {
+  color: var(--color-text-secondary);
+}
+
+.participants {
+  overflow-x: scroll;
+  display: flex;
+  gap: 0.5rem;
+  align-self: stretch;
+}
+
+.participant {
+  width: 4.5rem;
+  min-width: 4.5rem;
+  margin-inline: auto;
+}
+
+.buttons {
+  align-self: flex-end;
+  margin-top: 0.5rem;
+}

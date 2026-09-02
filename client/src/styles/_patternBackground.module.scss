@@ -1,0 +1,117 @@
+.background {
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+
+  overflow: hidden;
+
+  background-color: var(--theme-background-color);
+
+  &::before {
+    content: "";
+
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover;
+  }
+
+  &:not(.customBgImage).customBgColor::before {
+    display: none;
+  }
+
+  &.customBgImage::before {
+    transform: scale(1.1);
+    background-image: var(--custom-background) !important;
+  }
+
+  :global(body:not(.no-page-transitions)) &.withTransition {
+    transition: background-color 0.2s;
+
+    &.customBgImage::before {
+      transition: background-image var(--layer-transition);
+    }
+  }
+
+  &.customBgImage.blurred::before {
+    filter: blur(12px);
+  }
+
+  .gradientCanvas {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+
+    width: 100%;
+    height: 100%;
+
+    // Starts transparent until `useGradientBackground` marks the first rendered frame as ready
+    opacity: 0;
+  }
+
+  .gradientCanvas[data-ready] {
+    opacity: 1;
+  }
+
+  // A masked pattern whose mask blob hasn't loaded yet: keep the ready canvas hidden so its full,
+  // unmasked gradient doesn't flash over the whole background before `withMaskedPattern` applies.
+  &.maskedPatternPending .gradientCanvas {
+    opacity: 0;
+  }
+
+  :global(body:not(.no-page-transitions)) & {
+    transition: background-color 0.3s ease;
+  }
+
+  :global(body:not(.no-page-transitions)) & .gradientCanvas {
+    transition: opacity 0.3s ease;
+  }
+
+  :global(body:not(.no-page-transitions)) &.withPattern::after {
+    transition: opacity 0.3s ease;
+  }
+
+  &.withPattern::after {
+    content: "";
+
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+
+    opacity: var(--pattern-intensity, 0.5);
+    // Strong black doodles soft-lit over the gradient darken it visibly on any background — matching
+    // WebK. A muted `--pattern-color` tint blends to near-nothing here, so it's not used.
+    background-color: #000;
+    mix-blend-mode: soft-light;
+
+    mask-image: var(--custom-pattern, url("../assets/pattern.svg"));
+    mask-repeat: repeat;
+    mask-position: center;
+    mask-size: 26.875rem auto;
+  }
+
+  // Masked mode: the pattern masks the animated gradient itself, so the doodles reveal the
+  // gradient over the black base (used for dark wallpapers, where the intensity is negative)
+  &.withMaskedPattern .gradientCanvas {
+    mask-image: var(--custom-pattern, url("../assets/pattern.svg"));
+    mask-repeat: repeat;
+    mask-position: center;
+    mask-size: 26.875rem auto;
+  }
+
+  &.withMaskedPattern .gradientCanvas[data-ready] {
+    opacity: var(--pattern-intensity, 0.5);
+  }
+}

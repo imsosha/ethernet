@@ -1,0 +1,114 @@
+.root {
+  overflow-x: hidden;
+  overflow-y: hidden;
+
+  height: 100%;
+  padding: 1rem;
+
+  background-color: var(--color-background-secondary);
+
+  :global(.lovely-chart--container) {
+    font: inherit !important;
+    font-size: 13px !important;
+  }
+
+  :global(.lovely-chart--header) {
+    margin: 0 0.75rem;
+  }
+
+  :global(.lovely-chart--header),
+  :global(.lovely-chart--tooltip-title),
+  :global(.lovely-chart--tooltip-dataset-value),
+  :global(.lovely-chart--percentage-title) {
+    font-weight: var(--font-weight-medium) !important;
+  }
+
+  :global(.lovely-chart--container-type-pie) {
+    &:global(.lovely-chart--state-zoomed-in > canvas) {
+      animation-name: pie-slim-in !important;
+    }
+
+    &:global(:not(.lovely-chart--state-zoomed-in) > canvas) {
+      animation-name: pie-slim-out !important;
+    }
+  }
+}
+
+.messages, .publicForwards {
+  margin-top: 1rem;
+  padding: 0;
+
+  &-title {
+    padding-left: 0.75rem;
+
+    font-size: 16px;
+    line-height: 30px;
+    color: var(--text-color);
+    text-transform: lowercase;
+
+    &:first-letter {
+      text-transform: uppercase;
+    }
+  }
+}
+
+.ready {
+  overflow-y: scroll !important;
+}
+
+.graphContainer {
+  margin-top: 1rem;
+}
+
+.graph {
+  border-radius: var(--border-radius-island);
+
+  opacity: 1;
+  background-color: var(--color-background);
+  box-shadow: var(--shadow-island);
+
+  transition: opacity 0.3s ease;
+
+  & + & {
+    margin-top: 1rem;
+  }
+
+  &.hidden {
+    margin: 0;
+    opacity: 0;
+  }
+}
+
+@keyframes pie-slim-in {
+  0% {
+    transform: rotate(-360deg);
+    clip-path: circle(80% at center calc(50% - 7.5px));
+  }
+
+  25% {
+    transform: rotate(-360deg);
+    clip-path: circle(40% at center calc(50% - 7.5px));
+  }
+
+  75% {
+    transform: rotate(0);
+    clip-path: circle(40% at center calc(50% - 7.5px));
+  }
+}
+
+@keyframes pie-slim-out {
+  0% {
+    transform: rotate(360deg);
+    clip-path: circle(40% at center calc(50% - 7.5px));
+  }
+
+  50% {
+    transform: rotate(0);
+    clip-path: circle(40% at center calc(50% - 7.5px));
+  }
+
+  75% {
+    transform: rotate(0);
+    clip-path: circle(80% at center calc(50% - 7.5px));
+  }
+}

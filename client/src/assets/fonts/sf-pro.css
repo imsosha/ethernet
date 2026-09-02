@@ -1,0 +1,100 @@
+/* SF Pro Display & SF Pro Text - Embedded Local Font Suite */
+
+/* SF Pro Display */
+@font-face {
+  font-family: 'SF Pro Display';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./SF-Pro-Display-Regular.otf') format('opentype');
+}
+
+@font-face {
+  font-family: 'SF Pro Display';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./SF-Pro-Display-Medium.otf') format('opentype');
+}
+
+@font-face {
+  font-family: 'SF Pro Display';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./SF-Pro-Display-Semibold.otf') format('opentype');
+}
+
+@font-face {
+  font-family: 'SF Pro Display';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./SF-Pro-Display-Bold.otf') format('opentype');
+}
+
+/* SF Pro Text */
+@font-face {
+  font-family: 'SF Pro Text';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./SF-Pro-Text-Regular.otf') format('opentype');
+}
+
+@font-face {
+  font-family: 'SF Pro Text';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./SF-Pro-Text-Medium.otf') format('opentype');
+}
+
+@font-face {
+  font-family: 'SF Pro Text';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./SF-Pro-Text-Semibold.otf') format('opentype');
+}
+
+@font-face {
+  font-family: 'SF Pro Text';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./SF-Pro-Text-Bold.otf') format('opentype');
+}
+
+/* SF Pro (Universal Alias) */
+@font-face {
+  font-family: 'SF Pro';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./SF-Pro-Display-Regular.otf') format('opentype');
+}
+
+@font-face {
+  font-family: 'SF Pro';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./SF-Pro-Display-Medium.otf') format('opentype');
+}
+
+@font-face {
+  font-family: 'SF Pro';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./SF-Pro-Display-Semibold.otf') format('opentype');
+}
+
+@font-face {
+  font-family: 'SF Pro';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./SF-Pro-Display-Bold.otf') format('opentype');
+}

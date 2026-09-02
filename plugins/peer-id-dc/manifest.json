@@ -1,0 +1,6 @@
+{
+  "name": "Peer ID & DC",
+  "description": "Отображает Telegram ID и номер Data Center (DC) в карточке профиля",
+  "version": "1.0.0",
+  "author": "Ethernet"
+}

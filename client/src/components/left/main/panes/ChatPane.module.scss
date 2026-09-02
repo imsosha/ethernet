@@ -1,0 +1,28 @@
+@use "../../../../styles/mixins";
+
+.pane {
+  @include mixins.chat-list-pane-content;
+
+  cursor: var(--custom-cursor, pointer);
+  line-height: 1.25;
+
+  &:hover {
+    background-color: var(--color-chat-hover);
+  }
+}
+
+.title {
+  --emoji-size: 1.125rem;
+  --custom-emoji-size: var(--emoji-size);
+
+  font-size: 0.9375rem;
+  font-weight: var(--font-weight-semibold);
+}
+
+.subtitle {
+  --emoji-size: 1rem;
+  --custom-emoji-size: var(--emoji-size);
+
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}

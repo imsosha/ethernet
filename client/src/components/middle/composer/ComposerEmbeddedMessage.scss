@@ -1,0 +1,95 @@
+.ComposerEmbeddedMessage {
+  --accent-color: var(--color-primary);
+
+  max-height: 3.125rem;
+  margin-bottom: var(--composer-embedded-message-gap);
+  /* stylelint-disable plugin/no-low-performance-animation-properties */
+  transition:
+    max-height var(--composer-embedded-message-duration) ease-out,
+    margin-bottom var(--composer-embedded-message-duration) ease-out,
+    opacity var(--composer-embedded-message-duration) ease-out;
+  /* stylelint-enable plugin/no-low-performance-animation-properties */
+
+  .select-mode-active + .middle-column-footer & {
+    display: none;
+  }
+
+  &:not(.open) {
+    max-height: 0;
+    margin-bottom: 0;
+  }
+
+  body.no-message-composer-animations & {
+    transition: none !important;
+  }
+
+  &,
+  &_inner,
+  .EmbeddedMessage,
+  [class*="root"],
+  [class*="EmbeddedMessage"],
+  [class*="PeerColorWrapper"] {
+    background: transparent !important;
+    background-color: transparent !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  &_inner {
+    display: flex;
+    gap: 0.25rem;
+    align-items: center;
+  }
+
+  .hover-effect {
+    display: none !important;
+  }
+
+  & .embedded-left-icon {
+    position: relative;
+
+    display: grid;
+    flex-shrink: 0;
+    place-content: center;
+
+    padding: var(--composer-icon-button-padding);
+
+    font-size: 1.5rem;
+    color: var(--accent-color);
+
+    background: none !important;
+  }
+
+  & .embedded-cancel {
+    flex-shrink: 0;
+
+    width: auto;
+    height: auto;
+    padding-block: 0;
+    padding-inline: 0.5rem;
+
+    color: var(--accent-color, var(--color-primary));
+
+    background: none !important;
+  }
+
+  .forward-context-menu {
+    position: absolute;
+
+    .bubble {
+      width: auto;
+    }
+  }
+
+  .quote-reply {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.75rem;
+    font-size: 0.5rem;
+
+    @media (max-width: 600px) {
+      right: 0.625rem;
+    }
+  }
+}

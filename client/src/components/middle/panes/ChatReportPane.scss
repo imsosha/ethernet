@@ -1,0 +1,26 @@
+@use "../../../styles/mixins";
+
+.ChatReportPane {
+  @include mixins.middle-header-pane-content;
+
+  display: flex;
+  align-items: stretch;
+  height: auto;
+
+  body.no-page-transitions & {
+    .ripple-container {
+      display: none;
+    }
+  }
+
+  &--Button {
+    flex: 1 1 50%;
+    height: auto;
+    border-radius: var(--pane-content-radius);
+    white-space: nowrap;
+  }
+
+  &--Checkbox {
+    margin-top: -1rem !important;
+  }
+}

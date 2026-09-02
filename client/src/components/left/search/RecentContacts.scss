@@ -1,0 +1,15 @@
+.RecentContacts {
+  .Loading {
+    min-height: 75vh;
+  }
+
+  .recent-chats-header {
+    display: flex;
+    align-items: center;
+  }
+
+  .clear-recent-chats {
+    position: absolute;
+    inset-inline-end: 0;
+  }
+}

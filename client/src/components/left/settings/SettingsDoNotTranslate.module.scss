@@ -1,0 +1,10 @@
+.root, .item {
+  display: flex;
+  flex-direction: column;
+}
+
+.item {
+  overflow: hidden;
+  flex: 1 1 auto;
+  padding-block: 0;
+}

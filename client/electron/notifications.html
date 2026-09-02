@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notifications</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: transparent;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+    }
+
+    #container {
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 10px;
+      padding: 10px 14px;
+      width: 100%;
+      height: 100%;
+      justify-content: flex-start;
+      pointer-events: none;
+    }
+
+    .notif-card {
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      width: 100%;
+      min-height: 68px;
+      max-height: 82px;
+      padding: 6px 16px 6px 6px;
+      border-radius: 40px 20px 20px 40px;
+      background: #1c1c1e;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      border: none;
+      box-shadow: none;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      animation: notifIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      transition: background 0.18s;
+    }
+
+    .notif-card:hover {
+      background: #28282b;
+      box-shadow: none;
+    }
+
+    .notif-card.leaving {
+      animation: notifOut 0.24s cubic-bezier(0.4, 0, 1, 1) forwards;
+      pointer-events: none;
+    }
+
+    @keyframes notifIn {
+      0% {
+        opacity: 0;
+        transform: translateY(24px) scale(0.92);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes notifOut {
+      0% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+      100% {
+        opacity: 0;
+        transform: translateY(18px) scale(0.9);
+      }
+    }
+
+    .notif-avatar {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      background: #2c2c2e;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: #ffffff;
+      font-size: 20px;
+      line-height: 1;
+      overflow: hidden;
+    }
+
+    .notif-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .notif-content {
+      flex: 1;
+      min-width: 0;
+      margin-left: 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 3px;
+    }
+
+    .notif-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .notif-title {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.25;
+    }
+
+    .notif-time {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      font-size: 12px;
+      font-weight: 400;
+      color: rgba(255, 255, 255, 0.45);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .notif-body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      font-size: 13px;
+      font-weight: 400;
+      color: rgba(255, 255, 255, 0.85);
+      line-height: 1.32;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      word-break: break-word;
+    }
+
+    .notif-close {
+      position: absolute;
+      right: 8px;
+      top: 8px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.16);
+      color: rgba(255, 255, 255, 0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+      opacity: 0;
+      transition: opacity 0.15s, background 0.15s;
+    }
+
+    .notif-card:hover .notif-close {
+      opacity: 1;
+    }
+
+    .notif-close:hover {
+      background: rgba(255, 255, 255, 0.3);
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <div id="container"></div>
+
+  <script>
+    const container = document.getElementById('container');
+    const activeCards = new Map();
+    const NOTIF_TIMEOUT = 5000;
+
+    function getGradient(title) {
+      const gradients = [
+        'linear-gradient(135deg, #e53935, #e35d5b)',
+        'linear-gradient(135deg, #d81b60, #ba68c8)',
+        'linear-gradient(135deg, #8e24aa, #ab47bc)',
+        'linear-gradient(135deg, #5e35b1, #7e57c2)',
+        'linear-gradient(135deg, #3949ab, #5c6bc0)',
+        'linear-gradient(135deg, #1e88e5, #42a5f5)',
+        'linear-gradient(135deg, #00897b, #26a69a)',
+        'linear-gradient(135deg, #43a047, #66bb6a)',
+        'linear-gradient(135deg, #fb8c00, #ffa726)',
+        'linear-gradient(135deg, #f4511e, #ff7043)',
+      ];
+      let hash = 0;
+      for (let i = 0; i < (title || '').length; i++) {
+        hash = (hash << 5) - hash + title.charCodeAt(i);
+        hash |= 0;
+      }
+      return gradients[Math.abs(hash) % gradients.length];
+    }
+
+    function removeCard(id) {
+      const cardData = activeCards.get(id);
+      if (!cardData) return;
+
+      if (cardData.timer) clearTimeout(cardData.timer);
+      cardData.element.classList.add('leaving');
+
+      setTimeout(() => {
+        if (cardData.element.parentNode) {
+          cardData.element.parentNode.removeChild(cardData.element);
+        }
+        activeCards.delete(id);
+        updateContainerState();
+        if (window.notifBridge) {
+          window.notifBridge.dismissNotification(id);
+        }
+      }, 240);
+    }
+
+    function updateContainerState() {
+      const count = activeCards.size;
+      const height = count === 0 ? 0 : Math.min(count * 86 + 20, 360);
+      if (window.notifBridge) {
+        window.notifBridge.setHeight(height);
+      }
+    }
+
+    function addNotification(data) {
+      const { id = String(Date.now()), title = '', body = '', icon = '', time = '', chatId, messageId } = data;
+
+      // Keep maximum 3 stacked notifications
+      if (activeCards.size >= 3) {
+        const oldestId = activeCards.keys().next().value;
+        removeCard(oldestId);
+      }
+
+      const card = document.createElement('div');
+      card.className = 'notif-card';
+
+      // Avatar
+      const avatar = document.createElement('div');
+      avatar.className = 'notif-avatar';
+      if (icon) {
+        const img = document.createElement('img');
+        img.src = icon;
+        img.onerror = () => {
+          img.remove();
+          avatar.style.background = getGradient(title);
+          avatar.textContent = (title.trim()[0] || '').toUpperCase();
+        };
+        avatar.appendChild(img);
+      } else {
+        avatar.style.background = getGradient(title);
+        avatar.textContent = (title.trim()[0] || '').toUpperCase();
+      }
+
+      // Content
+      const content = document.createElement('div');
+      content.className = 'notif-content';
+
+      const header = document.createElement('div');
+      header.className = 'notif-header';
+
+      const titleEl = document.createElement('div');
+      titleEl.className = 'notif-title';
+      titleEl.textContent = title;
+
+      const timeEl = document.createElement('div');
+      timeEl.className = 'notif-time';
+      timeEl.textContent = time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      header.appendChild(titleEl);
+      header.appendChild(timeEl);
+
+      const bodyEl = document.createElement('div');
+      bodyEl.className = 'notif-body';
+      bodyEl.textContent = body;
+
+      content.appendChild(header);
+      content.appendChild(bodyEl);
+
+      // Close Button
+      const closeBtn = document.createElement('div');
+      closeBtn.className = 'notif-close';
+      closeBtn.textContent = '✕';
+      closeBtn.onclick = (e) => {
+        e.stopPropagation();
+        removeCard(id);
+      };
+
+      card.appendChild(avatar);
+      card.appendChild(content);
+      card.appendChild(closeBtn);
+
+      // Click on card
+      card.onclick = () => {
+        if (window.notifBridge) {
+          window.notifBridge.clickNotification({ chatId, messageId });
+        }
+        removeCard(id);
+      };
+
+      // Mouse events
+      let dismissTimer = setTimeout(() => {
+        removeCard(id);
+      }, NOTIF_TIMEOUT);
+
+      card.onmouseenter = () => {
+        if (dismissTimer) clearTimeout(dismissTimer);
+        if (window.notifBridge) window.notifBridge.setIgnoreMouse(false);
+      };
+
+      card.onmouseleave = () => {
+        dismissTimer = setTimeout(() => {
+          removeCard(id);
+        }, 2500);
+        if (window.notifBridge) window.notifBridge.setIgnoreMouse(true);
+      };
+
+      container.appendChild(card);
+      activeCards.set(id, { element: card, timer: dismissTimer });
+      updateContainerState();
+    }
+
+    if (window.notifBridge) {
+      window.notifBridge.onAddNotification((data) => {
+        addNotification(data);
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,153 @@
+.geoCardIsland {
+  margin-bottom: 1rem;
+  background: var(--color-background-secondary);
+  border-radius: var(--border-radius-ui, 12px);
+  padding: 1.125rem 1.25rem;
+  border: none;
+  box-shadow: none;
+}
+
+.geoCardContent {
+  display: flex;
+  align-items: center;
+  gap: 1.125rem;
+}
+
+.animWrapper {
+  width: 58px;
+  height: 58px;
+  min-width: 58px;
+  max-width: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-primary, #3390ec) 12%, transparent);
+  flex-shrink: 0;
+}
+
+.animGif {
+  width: 48px;
+  height: 48px;
+  background-color: var(--color-primary, #3390ec);
+  -webkit-mask-image: url('/network.gif');
+  mask-image: url('/network.gif');
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+.infoCol {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  gap: 0.2rem;
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.countryTitle {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.flag {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.cityOrg {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ipRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.spoilerButton {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 145px;
+  height: 28px;
+  padding: 0 0.75rem;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  background: color-mix(in srgb, var(--color-text) 8%, transparent);
+  color: var(--color-text);
+  transition: background-color 0.15s ease;
+  user-select: none;
+  font-family: monospace;
+  box-sizing: border-box;
+
+  &:hover {
+    background: color-mix(in srgb, var(--color-text) 14%, transparent);
+  }
+}
+
+.spoilerMask {
+  letter-spacing: 2px;
+  opacity: 0.7;
+  font-family: monospace;
+}
+
+.spoilerRevealed {
+  font-family: monospace;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.refreshBtn {
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+
+  &:hover {
+    color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-text) 8%, transparent);
+  }
+
+  &.spinning {
+    animation: rotateSpin 0.8s linear infinite;
+  }
+}
+
+@keyframes rotateSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

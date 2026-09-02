@@ -1,0 +1,68 @@
+@use '../../styles/mixins';
+
+.root {
+  --topic-icon-size: 5rem;
+
+  position: relative;
+  height: 100%;
+  background-color: var(--color-background-secondary);
+}
+
+.content {
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+
+  height: 100%;
+  padding: 1rem;
+}
+
+.general {
+  box-shadow: none;
+}
+
+.top {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 1.5rem;
+}
+
+.bottom {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+
+  min-height: 30rem;
+  padding-bottom: 0;
+}
+
+.iconWrapper {
+  --custom-emoji-size: var(--topic-icon-size);
+
+  align-self: center;
+
+  width: var(--topic-icon-size);
+  height: var(--topic-icon-size);
+  margin: 1.5rem 0;
+
+  font-size: calc(var(--topic-icon-size) - 2rem);
+}
+
+.icon {
+  width: 100%;
+  height: 100%;
+}
+
+.clickable {
+  cursor: var(--custom-cursor, pointer);
+}
+
+.heading {
+  font-size: 0.9375rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.icon-picker {
+  min-height: 10rem;
+}

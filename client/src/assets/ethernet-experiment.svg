@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 133 133" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+    <g transform="matrix(0,0.266667,-0.266667,0,133.333333,-0)">
+        <path d="M500,154.412L500,345.588C500,430.81 430.81,500 345.588,500L154.412,500C69.19,500 0,430.81 0,345.588L0,154.412C0,69.19 69.19,0 154.412,0L345.588,0C430.81,0 500,69.19 500,154.412Z" style="fill:url(#_Linear1);"/>
+    </g>
+    <g transform="matrix(1.659655,0,0,1.659655,66.666667,66.5)">
+        <g transform="matrix(1,0,0,1,-29.166667,-29.166667)">
+            <g id="erlenmeyer-flask--science-experiment-lab-flask-chemistry-solution" transform="matrix(4.166667,0,0,4.166667,0,0)">
+                <path id="Union" d="M3.491,1.957L4.085,1.957L4.085,3.849C4.085,4.07 4.027,4.287 3.915,4.478L0.923,9.612C0.267,10.738 0.783,12.184 2.004,12.64C5.226,13.844 8.774,13.844 11.996,12.64C13.217,12.184 13.733,10.738 13.077,9.612L10.085,4.478C9.973,4.287 9.915,4.07 9.915,3.849L9.915,1.957L10.509,1.957C10.923,1.957 11.259,1.621 11.259,1.207C11.259,0.792 10.923,0.457 10.509,0.457L3.491,0.457C3.077,0.457 2.741,0.792 2.741,1.207C2.741,1.621 3.077,1.957 3.491,1.957ZM5.585,3.849L5.585,1.957L8.415,1.957L8.415,3.849C8.415,4.335 8.544,4.813 8.789,5.233L9.405,6.291C7.84,6.446 6.329,6.429 4.63,6.231L5.211,5.233C5.456,4.813 5.585,4.335 5.585,3.849Z" style="fill:white;"/>
+            </g>
+        </g>
+    </g>
+    <defs>
+        <linearGradient id="_Linear1" x1="0" y1="0" x2="1" y2="0" gradientUnits="userSpaceOnUse" gradientTransform="matrix(500,0,0,500,0,250)"><stop offset="0" style="stop-color:rgb(255,140,157);stop-opacity:1"/><stop offset="1" style="stop-color:rgb(217,0,43);stop-opacity:1"/></linearGradient>
+    </defs>
+</svg>
