@@ -1,0 +1,138 @@
+.root {
+  position: relative;
+
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+
+  width: var(--folders-sidebar-width);
+  margin: 1rem 0 1rem 1rem;
+  border-radius: var(--border-radius-island);
+
+  &::before {
+    pointer-events: none;
+    content: '';
+
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+
+    background: rgba(0, 0, 0, 0.2);
+  }
+
+  &::after {
+    pointer-events: none;
+    content: '';
+
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+
+    backdrop-filter: blur(25px);
+  }
+
+  :global {
+    .Menu .bubble {
+      --offset-y: 3.5rem;
+      --offset-x: 1rem;
+
+      overflow-y: auto;
+      max-height: calc(100 * var(--vh) - 3.5rem);
+    }
+    .MenuItem .Toggle {
+      margin-inline-start: auto;
+    }
+
+    .MenuItem.compact .Toggle {
+      transform: scale(0.75);
+      margin-inline-end: -0.125rem;
+    }
+
+    .MenuItem.compact .Switcher {
+      transform: scale(0.75);
+    }
+    .account-menu-item {
+      --custom-emoji-size: 1rem;
+
+      &-test {
+        position: absolute;
+        z-index: 1;
+        bottom: 0.0625rem;
+        left: 2.875rem;
+
+        font-size: 0.5rem;
+        font-weight: var(--font-weight-medium);
+        color: var(--color-text-secondary);
+      }
+
+      .account-avatar {
+        margin-inline: 0.375rem 1.125rem;
+      }
+
+      .fullName {
+        margin: 0;
+        padding-top: 0.1875rem;
+        font-size: 1em;
+        line-height: 1;
+      }
+    }
+  }
+}
+
+.tabs {
+  position: relative;
+
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+
+  padding-inline: 0;
+
+  font-size: 0.625rem;
+  line-height: 0.75rem;
+}
+
+.pill {
+  pointer-events: none;
+
+  position: absolute;
+  right: 0.25rem;
+  left: 0.25rem;
+  transform: translateY(var(--pill-offset, 0px));
+
+  height: var(--pill-height, 4.5rem);
+  border-radius: 1.25rem;
+
+  background: rgba(255, 255, 255, 0.15);
+
+  transition: transform 300ms ease;
+}
+
+.icon {
+  font-size: 1.5rem;
+  color: white;
+}
+
+.menuButton {
+  --ripple-color: rgba(255, 255, 255, 0.08);
+  --button-active-background-color: rgba(255, 255, 255, 0.07);
+  --button-no-ripple-background-color: rgba(255, 255, 255, 0.07);
+
+  width: calc(var(--folders-sidebar-width) - 0.5rem);
+  height: var(--column-header-height);
+  margin: 0.25rem;
+  border-radius: 1.25rem;
+}
+
+.divider {
+  width: calc(100% - 0.5rem);
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.hideMenuButton {
+  visibility: hidden;
+}

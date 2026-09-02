@@ -1,0 +1,352 @@
+#Main {
+  isolation: isolate;
+  position: relative;
+
+  overflow: hidden;
+
+  height: 100%;
+
+  text-align: left;
+
+  &.folders-sidebar-visible {
+    grid-template-columns: auto auto 1fr;
+  }
+
+  @media (min-width: 1276px) {
+    position: relative;
+  }
+
+  @media (max-width: 600px) {
+    // iOS reveal-scrolls the document when the keyboard opens; a `--vh`-based height races that scroll and
+    // leaves a bare strip below the wallpaper. Pin `#Main` to the layout viewport so it always covers the
+    // visible area regardless of timing. (Ported from scroll-fixes-after-composer-redesign.)
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+  }
+
+  @media (min-width: 926px) {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: 100%;
+  }
+}
+
+.tauri-drag-region {
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  right: 0;
+  left: 0;
+
+  height: 1rem;
+}
+
+.has-call-header {
+  --call-header-height: 2rem;
+
+  #FoldersSidebar {
+    height: calc(100% - var(--call-header-height) - 2rem);
+    margin-top: calc(var(--call-header-height) + 1rem);
+  }
+
+  #LeftColumn {
+    height: calc(100% - var(--call-header-height) - 2rem);
+    margin-top: calc(var(--call-header-height) + 1rem);
+  }
+
+  #MiddleColumn {
+    height: calc(100% - var(--call-header-height));
+    margin-top: var(--call-header-height);
+  }
+
+  #RightColumn-wrapper {
+    height: calc(100% - var(--call-header-height));
+    margin-top: var(--call-header-height);
+  }
+}
+
+#FoldersSidebar {
+  align-self: stretch;
+}
+
+#LeftColumn {
+  --left-column-min-width: 16rem;
+  --left-column-max-width: 26.5rem;
+  --slide-background-color: transparent;
+
+  position: relative;
+
+  overflow: hidden;
+
+  width: 33vw;
+  min-width: var(--left-column-min-width);
+  max-width: var(--left-column-max-width);
+  height: auto;
+  margin: 0.5rem 0 0.5rem 0.5rem;
+  margin-inline-end: 0;
+  border-radius: var(--border-radius-island);
+
+  background-color: var(--color-background);
+  box-shadow: var(--shadow-island);
+
+  transition: height var(--layer-transition), max-height var(--layer-transition), transform var(--layer-transition);
+
+  #Main.right-column-shown:has(#RightColumn.is-profile-view) &,
+  #Main.right-column-open:has(#RightColumn.is-profile-view) & {
+    height: calc(50% - 0.75rem) !important;
+    max-height: calc(50% - 0.75rem) !important;
+    align-self: start;
+    margin-bottom: 0.25rem !important;
+    transform: translate3d(0, 0, 0) !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    display: block !important;
+  }
+
+  @media (min-width: 926px) {
+    --left-column-max-width: 40vw;
+
+    .folders-sidebar-visible & {
+      --left-column-max-width: calc(40vw - var(--folders-sidebar-width));
+
+      margin-left: 0.5rem;
+    }
+  }
+
+  @media (min-width: 1276px) {
+    --left-column-max-width: 33vw;
+
+    width: 25vw;
+
+    .folders-sidebar-visible & {
+      --left-column-max-width: calc(33vw - var(--folders-sidebar-width));
+    }
+  }
+
+  @media (max-width: 925px) {
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    transform: translate3d(calc(-100% - 1rem), 0, 0);
+
+    width: 26.5rem !important;
+    height: calc(var(--vh, 1vh) * 100 - 2rem);
+    margin: 0;
+
+    #Main.right-column-shown:has(#RightColumn.is-profile-view) &,
+    #Main.right-column-open:has(#RightColumn.is-profile-view) & {
+      position: fixed !important;
+      top: 0.5rem !important;
+      left: 0.5rem !important;
+      height: calc(50% - 0.75rem) !important;
+      max-height: calc(50% - 0.75rem) !important;
+      width: calc(100vw - 1rem) !important;
+      max-width: calc(100vw - 1rem) !important;
+      transform: translate3d(0, 0, 0) !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      z-index: 10 !important;
+    }
+
+    &::after {
+      pointer-events: none;
+      content: '';
+
+      position: absolute;
+      z-index: 1;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+
+      display: block;
+
+      opacity: 0;
+      background: black;
+
+      transition: opacity var(--layer-transition);
+
+      body.no-page-transitions & {
+        transition: none;
+      }
+
+      // @optimization
+      body.is-android & {
+        display: none;
+      }
+
+      body.is-android #Main.left-column-animating &,
+      body.is-android #Main:not(.left-column-open) & {
+        display: block;
+      }
+
+      body:not(.is-android) #Main:not(.left-column-open) &,
+      body.android-left-blackout-open & {
+        opacity: var(--layer-blackout-opacity);
+      }
+    }
+
+    #Main.left-column-animating & {
+      transition: transform var(--layer-transition);
+    }
+
+    body.no-page-transitions & {
+      transition: none;
+    }
+
+    #Main.left-column-open & {
+      transform: translate3d(0, 0, 0);
+    }
+
+    #Main.history-animation-disabled & {
+      transition: none;
+
+      &:after {
+        transition: none;
+      }
+    }
+  }
+
+  @media (max-width: 600px) {
+    --left-column-max-width: calc(100vw - env(safe-area-inset-left));
+
+    top: 0;
+    bottom: 0;
+    left: env(safe-area-inset-left) !important;
+    transform: translate3d(-100%, 0, 0);
+
+    width: calc(100vw - env(safe-area-inset-left)) !important;
+    max-width: none;
+    height: auto;
+    border-radius: 0;
+
+    box-shadow: none;
+
+    #Main.right-column-shown:has(#RightColumn.is-profile-view) &,
+    #Main.right-column-open:has(#RightColumn.is-profile-view) & {
+      visibility: visible !important;
+      opacity: 1 !important;
+      z-index: 10 !important;
+      top: 0.5rem !important;
+      left: 0.5rem !important;
+      width: calc(100vw - 1rem) !important;
+      max-width: calc(100vw - 1rem) !important;
+      height: calc(50% - 0.75rem) !important;
+      max-height: calc(50% - 0.75rem) !important;
+      border-radius: var(--border-radius-island) !important;
+      box-shadow: var(--shadow-island) !important;
+      transform: translate3d(0, 0, 0) !important;
+      display: block !important;
+    }
+
+    // Fix: when opening the SymbolMenu, the chat list flashes in the background
+    body.is-symbol-menu-open &::before {
+      content: '';
+
+      position: absolute;
+      z-index: 1;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+
+      background: var(--color-background);
+    }
+  }
+}
+
+#RightColumn {
+
+  #Main.history-animation-disabled & {
+    transition: none;
+
+    .overlay-backdrop {
+      transition: none;
+    }
+  }
+
+  @media (max-width: 600px) {
+    &:not(.is-profile-view) {
+      height: auto;
+    }
+  }
+}
+
+#Main.history-animation-disabled .overlay-backdrop {
+  transition: none;
+}
+
+#MiddleColumn {
+
+  #Main.history-animation-disabled & {
+    transition: none;
+
+    &:after {
+      transition: none;
+    }
+  }
+
+  @media (max-width: 925px) {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    transform: translate3d(0, 0, 0);
+
+    max-width: none;
+
+    #Main.left-column-animating & {
+      transition: transform var(--layer-transition);
+    }
+
+    #Main.left-column-open & {
+      transform: translate3d(calc(33.5rem), 0, 0);
+    }
+
+    body.no-right-column-animations #Main.right-column-open &,
+    body.no-right-column-animations #Main.right-column-shown & {
+      transition: none;
+    }
+  }
+
+  @media (max-width: 600px) {
+    border-left: none;
+
+    #Main.left-column-open & {
+      transform: translate3d(100vw, 0, 0);
+    }
+
+    #Main.right-column-open & {
+      transform: translate3d(-20vw, 0, 0);
+    }
+  }
+}
+
+@media (max-width: 925px) {
+  .folders-sidebar-visible {
+    #FoldersSidebar {
+      position: fixed;
+      transform: translate3d(calc(-100% - 2rem), 0, 0);
+      height: calc(var(--vh, 1vh) * 100 - 2rem);
+      transition: transform var(--layer-transition);
+    }
+
+    #LeftColumn {
+      left: 1rem !important;
+    }
+
+    &.left-column-open {
+      #FoldersSidebar {
+        transform: translate3d(0, 0, 0);
+      }
+
+      #LeftColumn {
+        left: calc(var(--folders-sidebar-width) + 1.5rem) !important;
+      }
+    }
+  }
+}

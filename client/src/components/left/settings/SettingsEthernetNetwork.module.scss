@@ -1,0 +1,304 @@
+.sectionIsland {
+  margin-bottom: 1rem;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  border-radius: var(--border-radius-ui, 0.75rem);
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background-color: var(--color-item-hover);
+  }
+}
+
+.rowDisabled {
+  cursor: default;
+
+  &:hover {
+    background-color: transparent;
+  }
+}
+
+.titleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.titleText {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.descText {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  line-height: 1.3;
+}
+
+.bypassPortInput {
+  width: 5.5rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--border-radius-buttons, 0.375rem);
+  border: 1px solid var(--color-borders-input, transparent);
+  background-color: var(--color-background-secondary);
+  color: var(--color-text);
+  font-size: 0.875rem;
+  text-align: center;
+  outline: none;
+  font-family: monospace;
+
+  &:focus {
+    border-color: var(--color-primary);
+  }
+}
+
+/* Proxy Card List */
+.proxyList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.proxyItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-radius: var(--border-radius-ui, 0.75rem);
+  background-color: var(--color-background-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background-color: var(--color-item-hover);
+  }
+
+  &.active {
+    background-color: color-mix(in srgb, var(--color-primary) 12%, var(--color-background-secondary));
+  }
+}
+
+.proxyInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.proxyProtocolBadge {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 0.2rem 0.45rem;
+  border-radius: 0.375rem;
+  background-color: color-mix(in srgb, var(--color-primary) 20%, transparent);
+  color: var(--color-primary);
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+.proxyDetails {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.proxyName {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.proxyServer {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.proxyActions {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.pingBadge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.45rem;
+  border-radius: 0.375rem;
+  background-color: color-mix(in srgb, var(--color-text) 8%, transparent);
+  color: var(--color-text-secondary);
+  margin-right: 0.25rem;
+
+  &.fast {
+    color: #4caf50;
+  }
+
+  &.medium {
+    color: #ff9800;
+  }
+
+  &.slow {
+    color: #f44336;
+  }
+}
+
+.iconBtn {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 0.375rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+
+  &:hover {
+    color: var(--color-text);
+    background-color: var(--color-item-hover);
+  }
+
+  &.deleteBtn:hover {
+    color: #f44336;
+    background-color: color-mix(in srgb, #f44336 15%, transparent);
+  }
+}
+
+.emptyHint {
+  padding: 1.5rem 1rem;
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.addProxyBtn {
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border-radius: var(--border-radius-buttons, 0.75rem);
+  background-color: var(--color-primary);
+  color: var(--color-white, #fff);
+  border: none;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: opacity 0.15s ease;
+
+  &:hover {
+    opacity: 0.9;
+  }
+}
+
+/* Modal Tabs & Forms */
+.modalTabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid var(--color-dividers);
+  padding-bottom: 0.5rem;
+}
+
+.modalTab {
+  background: none;
+  border: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  padding: 0.5rem 0.875rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &.active {
+    background-color: color-mix(in srgb, var(--color-primary) 15%, transparent);
+    color: var(--color-primary);
+  }
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.formRow {
+  display: flex;
+  gap: 0.75rem;
+
+  > * {
+    flex: 1;
+  }
+}
+
+.formLabel {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.formInput,
+.formSelect,
+.formTextarea {
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  border-radius: var(--border-radius-buttons, 0.5rem);
+  border: 1px solid var(--color-borders-input, transparent);
+  background-color: var(--color-background-secondary);
+  color: var(--color-text);
+  font-size: 0.875rem;
+  outline: none;
+  box-sizing: border-box;
+  font-family: inherit;
+
+  &:focus {
+    border-color: var(--color-primary);
+  }
+}
+
+.formTextarea {
+  resize: vertical;
+  min-height: 5rem;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+
+  > button {
+    min-width: 6.5rem;
+    width: auto !important;
+    flex: 0 0 auto;
+  }
+}
+
+:global(.Modal.closing .modal-dialog) {
+  transition: opacity 0.16s ease-out, transform 0.16s ease-out !important;
+  transform: scale(0.97) translate3d(0, 0, 0) !important;
+  opacity: 0 !important;
+}
+
+:global(.Modal.open .modal-dialog) {
+  transition: opacity 0.2s ease-out, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}

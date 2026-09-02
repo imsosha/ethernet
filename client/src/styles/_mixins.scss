@@ -1,0 +1,217 @@
+// @optimization
+@mixin while-transition() {
+  .Transition_slide:not(.Transition_slide-active) & {
+    @content;
+  }
+}
+
+@mixin adapt-padding-to-scrollbar($padding, $forceSpace: 0px) {
+  padding-inline-end: calc(max($padding - var(--scrollbar-width), $forceSpace));
+}
+
+@mixin adapt-margin-to-scrollbar($margin, $forceSpace: 0px) {
+  margin-inline-end: calc(max($margin - var(--scrollbar-width), $forceSpace));
+}
+
+@mixin filter-outline($width: 0.125rem, $color) {
+  filter:
+    drop-shadow($width $width 0 $color)
+    drop-shadow((-$width) $width 0 $color)
+    drop-shadow($width (-$width) 0 $color)
+    drop-shadow((-$width) (-$width) 0 $color);
+}
+
+@mixin gradient-border-top($width, $cutout: 0px) {
+  mask-image: linear-gradient(transparent $cutout, black $width);
+}
+
+@mixin gradient-border-bottom($height, $cutout: 0px) {
+  mask-image: linear-gradient(to top, transparent $cutout, black $height);
+}
+
+@mixin gradient-border-horizontal($borderStart, $borderEnd) {
+  mask-image: linear-gradient(to right, transparent, black $borderStart, black calc(100% - $borderEnd), transparent);
+}
+
+@mixin gradient-border-left($indent, $cutout: 0px) {
+  mask-image: linear-gradient(to right, transparent $cutout, black $indent);
+}
+
+@mixin gradient-border-right($indent, $cutout: 0px) {
+  mask-image: linear-gradient(to left, transparent $cutout, black $indent);
+}
+
+@mixin gradient-border-top-bottom($top, $bottom) {
+  mask-image: linear-gradient(transparent 0%, black $top, black calc(100% - $bottom), transparent 100%);
+}
+
+@mixin peer-gradient($property, $colorCount) {
+  --_accent-color-rgb: var(--color-accent-own-rgb);
+
+  html.theme-dark {
+    --_accent-color-rgb: var(--color-text-rgb);
+  }
+
+  @if $colorCount == 2 {
+    #{$property}:
+      repeating-linear-gradient(
+        -45deg,
+        rgb(var(--_accent-color-rgb), 100%),
+        rgb(var(--_accent-color-rgb), 100%) 5px,
+        rgb(var(--_accent-color-rgb), 35%) 5px,
+        rgb(var(--_accent-color-rgb), 35%) 10px
+      );
+  }
+
+  @else {
+    #{$property}:
+      repeating-linear-gradient(
+        -45deg,
+        rgb(var(--_accent-color-rgb), 100%),
+        rgb(var(--_accent-color-rgb), 100%) 5px,
+        rgb(var(--_accent-color-rgb), 60%) 5px,
+        rgb(var(--_accent-color-rgb), 60%) 10px,
+        rgb(var(--_accent-color-rgb), 20%) 10px,
+        rgb(var(--_accent-color-rgb), 20%) 15px
+      );
+  }
+}
+
+@mixin reset-range() {
+  input[type="range"] {
+    display: block;
+
+    width: 100%;
+    margin-bottom: 0.5rem;
+
+    -webkit-appearance: none;
+    background: transparent;
+
+    &::-webkit-slider-thumb {
+      -webkit-appearance: none;
+    }
+
+    &::-moz-range-thumb {
+      -moz-appearance: none;
+    }
+
+    &::-webkit-slider-runnable-track {
+      cursor: var(--custom-cursor, pointer);
+    }
+
+    &::-moz-range-track, &::-moz-range-progress {
+      cursor: var(--custom-cursor, pointer);
+    }
+
+    &:focus {
+      outline: none;
+    }
+  }
+}
+
+@mixin middle-header-pane-content {
+  --pane-content-radius: calc(var(--border-radius-pane) - 0.25rem);
+
+  position: absolute;
+  top: 0;
+  transform: translateY(-100%);
+
+  width: 100%;
+  height: 2.875rem;
+  padding-top: 0.25rem;
+  padding-right: max(0.25rem, env(safe-area-inset-right));
+  padding-bottom: 0.25rem;
+  padding-left: max(0.25rem, env(safe-area-inset-left));
+
+  opacity: 0;
+  background-color: var(--color-background);
+
+  transition:
+    transform var(--pane-slide-transition, var(--slide-transition)),
+    opacity var(--pane-slide-transition, var(--slide-transition));
+}
+
+@mixin middle-header-pane-island {
+  @include middle-header-pane-content;
+
+  border-radius: var(--border-radius-pane);
+  opacity: 1;
+  box-shadow: var(--shadow-pane);
+}
+
+@mixin chat-list-pane-content {
+  position: absolute;
+  top: 0;
+  transform: translateY(-100%);
+
+  width: 100%;
+  padding: 0.5625rem;
+
+  opacity: 0;
+  background-color: var(--color-background);
+
+  transition:
+    transform var(--pane-slide-transition, var(--slide-transition)),
+    opacity var(--pane-slide-transition, var(--slide-transition));
+}
+
+@mixin side-panel-section {
+  border-bottom: 0.625rem solid var(--color-background-secondary);
+  background-color: var(--color-background);
+  box-shadow: inset 0 -0.0625rem 0 0 var(--color-background-secondary-accent);
+
+  &:last-child {
+    border-bottom: none;
+    box-shadow: none;
+  }
+}
+
+@mixin on-active-vt($type) {
+  :global {
+    .active-vt-#{$type} {
+      @content;
+    }
+  }
+}
+
+@mixin with-vt-type($type) {
+  :global(.active-vt-#{$type}) & {
+    view-transition-name: var(--_vtn);
+  }
+}
+
+@mixin action-message-bg($isModule: false, $noBackground: false) {
+  @if not $noBackground {
+    background-color: var(--action-message-bg);
+  }
+
+  @if $isModule {
+    :global(body.with-message-blur) & {
+      backdrop-filter: blur(4px);
+    }
+  }
+
+  @else {
+    body.with-message-blur & {
+      backdrop-filter: blur(4px);
+    }
+  }
+}
+
+@mixin composer-pill {
+  padding: var(--composer-pill-padding);
+  border-radius: var(--composer-pill-radius);
+  background: var(--color-background);
+}
+
+@mixin composer-action-button-pill {
+  flex-shrink: 0;
+
+  width: var(--composer-main-button-width);
+  height: var(--composer-main-button-height);
+  border-radius: var(--composer-control-radius);
+
+  color: white;
+
+  background: var(--color-primary);
+}

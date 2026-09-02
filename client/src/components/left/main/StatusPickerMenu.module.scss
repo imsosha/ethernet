@@ -1,0 +1,36 @@
+@use "../../../styles/mixins";
+
+.menuContent {
+  --offset-y: 3.25rem !important;
+  --offset-x: var(--folders-sidebar-width) !important;
+  --border-radius-default: 1.25rem;
+
+  left: 0.5rem;
+
+  width: 100%;
+  max-width: calc(var(--symbol-menu-width) + var(--scrollbar-width));
+  height: var(--symbol-menu-height);
+  padding: 0 !important;
+
+  :global(body:not(.no-menu-blur)) & {
+    --color-background: var(--color-background-compact-menu);
+
+    backdrop-filter: blur(25px);
+  }
+
+  :global(.StickerButton.custom-emoji), :global(.sticker-set-cover) {
+    color: var(--color-primary);
+  }
+
+  @media (max-width: 26rem) {
+    right: 0.5rem !important;
+    left: 0.5rem !important;
+    width: calc(100vw - 1rem);
+  }
+}
+
+.extendedPicker {
+  height: calc(100% + 2rem);
+
+  @include mixins.gradient-border-bottom(calc(2rem + 0.5rem), calc(2rem + 0.0625rem));
+}

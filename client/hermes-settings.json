@@ -1,0 +1,27 @@
+{
+  "enabledPlugins": [],
+  "theme": null,
+  "mod": {
+    "colors": {
+      "--color-background": "#121212",
+      "--color-background-secondary": "#000000",
+      "--color-background-sidebar": "#363636",
+      "--color-text": "#ffffff",
+      "--color-primary": "#4f4d60",
+      "--color-background-own": "#666478",
+      "--color-chat-active": "#827d97"
+    },
+    "borderRadius": 12,
+    "blurStrength": 18,
+    "blurTargets": {
+      "sidebar": true,
+      "header": true,
+      "bubbles": true,
+      "menus": true
+    },
+    "animationDuration": 150,
+    "animationCurve": "0.22, 1.5, 0.36, 1.5",
+    "animationsDisabled": false,
+    "chatWidth": "full"
+  }
+}

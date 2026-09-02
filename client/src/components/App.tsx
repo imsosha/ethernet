@@ -1,0 +1,311 @@
+import { useEffect, useLayoutEffect } from '../lib/teact/teact';
+import { withGlobal } from '../global';
+
+import type { GlobalState } from '../global/types';
+import type { ThemeKey } from '../types';
+import type { UiLoaderPage } from './common/UiLoader';
+
+import {
+  DARK_THEME_BG_COLOR, INACTIVE_MARKER, LIGHT_THEME_BG_COLOR, PAGE_TITLE, PAGE_TITLE_TAURI,
+} from '../config';
+import { forceMutation } from '../lib/fasterdom/stricterdom.ts';
+import {
+  selectActionMessageBg, selectTabState, selectTheme, selectThemeValues,
+} from '../global/selectors';
+import { IS_TAURI } from '../util/browser/globalEnvironment';
+import { IS_INSTALL_PROMPT_SUPPORTED, IS_WAVE_TRANSFORM_SUPPORTED, PLATFORM_ENV } from '../util/browser/windowEnvironment';
+import buildClassName from '../util/buildClassName';
+import { setupBeforeInstallPrompt } from '../util/installPrompt';
+import { ACCOUNT_SLOT, getAccountSlotUrl, getFirstLoggedInAccountSlot } from '../util/multiaccount';
+import { hasEncryptedSession } from '../util/passcode';
+import { getInitialLocationHash, parseInitialLocationHash } from '../util/routing';
+import { checkSessionLocked, hasStoredSession } from '../util/sessions';
+import { getActionMessageBg, getWallpaperBaseColor } from '../util/wallpaper';
+import { updateSizes } from '../util/windowSize';
+import { addUnreadCountersCallback, getAllNotificationsCount } from '../util/folderManager';
+import { initEthernetBadges } from '../util/ethernetBadges';
+
+import useTauriDrag from '../hooks/tauri/useTauriDrag';
+import useAppLayout from '../hooks/useAppLayout';
+import usePrevious from '../hooks/usePrevious';
+import { useSignalEffect } from '../hooks/useSignalEffect';
+import { getIsInBackground } from '../hooks/window/useBackgroundMode';
+
+import Auth from './auth/Auth';
+import Notifications from './common/Notifications';
+import UiLoader from './common/UiLoader';
+import AppInactive from './main/AppInactive';
+import LockScreen from './main/LockScreen.async';
+import Main from './main/Main.async';
+import WaveContainer from './main/visualEffects/WaveContainer';
+import EthernetSplashScreen from './common/EthernetSplashScreen';
+// import Test from './test/demo/MessageTextStreamingTest';
+import Transition from './ui/Transition';
+
+import styles from './App.module.scss';
+
+type StateProps = {
+  authState: GlobalState['auth']['state'];
+  isScreenLocked?: boolean;
+  hasPasscode?: boolean;
+  inactiveReason?: 'auth' | 'otherClient';
+  hasWebAuthTokenFailed?: boolean;
+  isTestServer?: boolean;
+  theme: ThemeKey;
+  customBackgroundColor?: string;
+  actionMessageBg?: string;
+};
+
+enum AppScreens {
+  auth,
+  main,
+  lock,
+  inactive,
+}
+
+const TRANSITION_RENDER_COUNT = Object.keys(AppScreens).length / 2;
+const ACTIVE_PAGE_TITLE = IS_TAURI ? PAGE_TITLE_TAURI : PAGE_TITLE;
+const INACTIVE_PAGE_TITLE = `${ACTIVE_PAGE_TITLE} ${INACTIVE_MARKER}`;
+
+const App = ({
+  authState,
+  isScreenLocked,
+  hasPasscode,
+  inactiveReason,
+  hasWebAuthTokenFailed,
+  isTestServer,
+  theme,
+  customBackgroundColor,
+  actionMessageBg,
+}: StateProps) => {
+  const { isMobile } = useAppLayout();
+  const isMobileOs = PLATFORM_ENV === 'iOS' || PLATFORM_ENV === 'Android';
+
+  useEffect(() => {
+    if (IS_INSTALL_PROMPT_SUPPORTED) {
+      setupBeforeInstallPrompt();
+    }
+  }, []);
+
+  useEffect(() => {
+    const hash = getInitialLocationHash();
+    // If there is no stored session on first slot, navigate to any other slot with stored session
+    if (!hasStoredSession() && !ACCOUNT_SLOT && !hash) {
+      const firstLoggedInAccountSlot = getFirstLoggedInAccountSlot();
+      if (firstLoggedInAccountSlot) {
+        const url = getAccountSlotUrl(firstLoggedInAccountSlot);
+        window.location.href = `${url}#${hash || 'login'}`;
+      }
+    }
+
+    // TODO[Passcode]: Remove when multiacc passcode is implemented
+    const checkMultiaccPasscode = async () => {
+      if (checkSessionLocked() && ACCOUNT_SLOT && await hasEncryptedSession()) {
+        const url = getAccountSlotUrl(1);
+        window.location.href = url;
+      }
+    };
+    checkMultiaccPasscode();
+  }, []);
+
+  // Prevent drop on elements that do not accept it
+  useEffect(() => {
+    const body = document.body;
+    const handleDrag = (e: DragEvent) => {
+      e.preventDefault();
+      if (!e.dataTransfer) return;
+      if (!(e.target as HTMLElement).dataset.dropzone) {
+        e.dataTransfer.dropEffect = 'none';
+      } else {
+        e.dataTransfer.dropEffect = 'copy';
+      }
+    };
+    const handleDrop = (e: DragEvent) => {
+      e.preventDefault();
+    };
+    body.addEventListener('drop', handleDrop);
+    body.addEventListener('dragover', handleDrag);
+    body.addEventListener('dragenter', handleDrag);
+
+    return () => {
+      body.removeEventListener('drop', handleDrop);
+      body.removeEventListener('dragover', handleDrag);
+      body.removeEventListener('dragenter', handleDrag);
+    };
+  }, []);
+
+  // Синхронизация счетчика непрочитанных с таскбаром Windows и треем
+  useEffect(() => {
+    const updateUnread = () => {
+      const count = getAllNotificationsCount();
+      if (window.ethernetDesktop?.setUnreadCount) {
+        window.ethernetDesktop.setUnreadCount(count);
+      }
+    };
+    updateUnread();
+    return addUnreadCountersCallback(updateUnread);
+  }, []);
+
+  // Инициализация и синхронизация списка саппортеров и разработчиков Ethernet
+  useEffect(() => {
+    void initEthernetBadges();
+  }, []);
+
+  // return <Test />;
+
+  let activeKey: AppScreens;
+  let page: UiLoaderPage | undefined;
+
+  if (inactiveReason) {
+    activeKey = AppScreens.inactive;
+  } else if (isScreenLocked) {
+    page = 'lock';
+    activeKey = AppScreens.lock;
+  } else if (authState) {
+    switch (authState) {
+      case 'authorizationStateWaitPhoneNumber':
+        page = 'authPhoneNumber';
+        activeKey = AppScreens.auth;
+        break;
+      case 'authorizationStateWaitCode':
+        page = 'authCode';
+        activeKey = AppScreens.auth;
+        break;
+      case 'authorizationStateWaitPassword':
+        page = 'authPassword';
+        activeKey = AppScreens.auth;
+        break;
+      case 'authorizationStateWaitRegistration':
+        activeKey = AppScreens.auth;
+        break;
+      case 'authorizationStateWaitQrCode':
+        page = 'authQrCode';
+        activeKey = AppScreens.auth;
+        break;
+      case 'authorizationStateClosed':
+      case 'authorizationStateClosing':
+      case 'authorizationStateLoggingOut':
+      case 'authorizationStateReady':
+        page = 'main';
+        activeKey = AppScreens.main;
+        break;
+    }
+  } else if (hasStoredSession()) {
+    page = 'main';
+    activeKey = AppScreens.main;
+  } else if (hasPasscode) {
+    activeKey = AppScreens.lock;
+  } else {
+    page = isMobileOs ? 'authPhoneNumber' : 'authQrCode';
+    activeKey = AppScreens.auth;
+  }
+
+  if (activeKey !== AppScreens.lock
+    && activeKey !== AppScreens.inactive
+    && activeKey !== AppScreens.main
+    && parseInitialLocationHash()?.tgWebAuthToken
+    && !hasWebAuthTokenFailed) {
+    page = 'main';
+    activeKey = AppScreens.main;
+  }
+
+  useEffect(() => {
+    updateSizes();
+  }, []);
+
+  useEffect(() => {
+    if (inactiveReason) {
+      document.title = INACTIVE_PAGE_TITLE;
+    } else {
+      document.title = ACTIVE_PAGE_TITLE;
+    }
+  }, [inactiveReason]);
+
+  const prevActiveKey = usePrevious(activeKey);
+
+  function renderContent() {
+    switch (activeKey) {
+      case AppScreens.auth:
+        return <Auth />;
+      case AppScreens.main:
+        return <Main isMobile={isMobile} />;
+      case AppScreens.lock:
+        return <LockScreen isLocked={isScreenLocked} />;
+      case AppScreens.inactive:
+        return <AppInactive inactiveReason={inactiveReason!} />;
+    }
+  }
+
+  useTauriDrag();
+
+  useLayoutEffect(() => {
+    document.body.classList.add(styles.bg);
+  }, []);
+
+  useLayoutEffect(() => {
+    // Prefer the chosen wallpaper's base color, so the pre-render base matches the
+    // actual wallpaper instead of flashing the built-in default first.
+    document.body.style.setProperty(
+      '--theme-background-color',
+      customBackgroundColor || (theme === 'dark' ? DARK_THEME_BG_COLOR : LIGHT_THEME_BG_COLOR),
+    );
+  }, [theme, customBackgroundColor]);
+
+  useLayoutEffect(() => {
+    // Fall back to the theme default when the tint is unset (e.g. a photo wallpaper without a
+    // thumbnail), so service chips don't keep the previous wallpaper's tint.
+    document.body.style.setProperty(
+      '--action-message-bg',
+      actionMessageBg || getActionMessageBg(theme)!,
+    );
+  }, [actionMessageBg, theme]);
+
+  const getIsInBackgroundLocal = getIsInBackground;
+  useSignalEffect(() => {
+    // Mutation forced to avoid RAF throttling in background
+    forceMutation(() => {
+      document.body.classList.toggle('in-background', getIsInBackgroundLocal());
+    }, document.body, true);
+  }, [getIsInBackgroundLocal]);
+
+  return (
+    <UiLoader page={page} isMobile={isMobile}>
+      <Transition
+        name="fade"
+        activeKey={activeKey}
+        shouldCleanup
+        className={buildClassName(
+          'full-height',
+          (activeKey === AppScreens.auth || prevActiveKey === AppScreens.auth) && 'is-auth',
+        )}
+        renderCount={TRANSITION_RENDER_COUNT}
+      >
+        {renderContent}
+      </Transition>
+      {activeKey === AppScreens.auth && isTestServer && <div className="test-server-badge">Test server</div>}
+      <Notifications />
+      {IS_WAVE_TRANSFORM_SUPPORTED && <WaveContainer />}
+      <EthernetSplashScreen />
+    </UiLoader>
+  );
+};
+
+export default withGlobal(
+  (global): Complete<StateProps> => {
+    const { state: authState, hasWebAuthTokenFailed, hasWebAuthTokenPasswordRequired } = global.auth;
+    const theme = selectTheme(global);
+    const themeValues = selectThemeValues(global, theme);
+
+    return {
+      authState,
+      isScreenLocked: global.passcode?.isScreenLocked,
+      hasPasscode: global.passcode?.hasPasscode,
+      inactiveReason: selectTabState(global).inactiveReason,
+      hasWebAuthTokenFailed: hasWebAuthTokenFailed || hasWebAuthTokenPasswordRequired,
+      theme,
+      customBackgroundColor: getWallpaperBaseColor(theme, themeValues || {}),
+      isTestServer: global.config?.isTestServer,
+      actionMessageBg: selectActionMessageBg(global),
+    };
+  },
+)(App);

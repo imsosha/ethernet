@@ -1,0 +1,92 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+
+  margin-inline-start: 0.25rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+
+  cursor: pointer;
+  opacity: 0.85;
+  color: var(--accent-color, var(--color-primary));
+  transition: opacity 0.2s ease, transform 0.2s ease, filter 0.2s ease;
+
+  &:hover {
+    opacity: 1;
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 4px color-mix(in srgb, var(--accent-color, var(--color-primary)) 60%, transparent));
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+
+  &.development {
+    opacity: 0.95;
+  }
+
+  &.support {
+    opacity: 0.85;
+  }
+}
+
+.icon {
+  width: 1.125rem;
+  height: 1.125rem;
+  display: block;
+  fill: currentColor;
+}
+
+.supporterModal {
+  :global(.modal-dialog) {
+    max-width: 22rem;
+    text-align: center;
+    padding: 1.5rem;
+    border-radius: var(--border-radius-modal, 1rem);
+  }
+}
+
+.modalIconWrapper {
+  width: 3.5rem;
+  height: 3.5rem;
+  margin: 0 auto 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent-color, var(--color-primary)) 15%, transparent);
+  color: var(--accent-color, var(--color-primary));
+
+  svg {
+    width: 2rem;
+    height: 2rem;
+    fill: currentColor;
+  }
+}
+
+.modalTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--color-text);
+}
+
+.modalText {
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  color: var(--color-text-secondary);
+  margin-bottom: 1.25rem;
+
+  a {
+    color: var(--accent-color, var(--color-primary));
+    font-weight: 500;
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}

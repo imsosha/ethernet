@@ -1,0 +1,130 @@
+.MessageContextMenu {
+  user-select: none;
+  position: absolute;
+  font-size: 1rem;
+
+  &_items {
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding: 0.5rem 0;
+  }
+
+  &.compact &_items {
+    padding: 0.25rem 0;
+  }
+
+  .bubble {
+    overflow: visible !important;
+    display: flex;
+    flex-direction: column;
+    padding: 0 !important;
+  }
+
+  &.with-reactions .bubble {
+    background: none !important;
+    backdrop-filter: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    outline: none !important;
+  }
+
+  &.with-reactions &_items {
+    padding: 0.25rem 0;
+    margin-inline-end: 0 !important;
+    border-radius: var(--border-radius-default);
+
+    background: var(--color-background-compact-menu);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 0.25rem 0.5rem 0.125rem var(--color-default-shadow);
+    border: 1px solid var(--color-borders);
+
+    body.no-menu-blur & {
+      background: var(--color-background);
+      backdrop-filter: none;
+    }
+  }
+
+  .backdrop {
+    touch-action: none;
+  }
+
+  &--seen-by-label-wrapper {
+    position: relative;
+    flex-grow: 1;
+  }
+
+  &--seen-by-label {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    left: 0;
+    transform: translateY(-50%);
+
+    overflow: hidden;
+
+    text-align: initial;
+    text-overflow: ellipsis;
+  }
+
+  .avatars {
+    padding-inline-start: 1rem;
+  }
+
+  .profile-music-menu-item-transition {
+    height: 3rem;
+  }
+
+  &.compact .profile-music-menu-item-transition {
+    height: 2.25rem;
+  }
+
+  .profile-music-menu-icon-placeholder {
+    flex-shrink: 0;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-inline-end: 2rem;
+  }
+
+  &.compact .profile-music-menu-icon-placeholder {
+    width: 1.25rem;
+    margin-inline: 0.5rem 1.25rem;
+  }
+
+  .profile-music-menu-label-placeholder {
+    width: 8rem;
+    height: 0.75rem;
+    border-radius: 0.375rem;
+  }
+
+  .ReactionSelector {
+    position: absolute;
+    top: 0;
+    transform: translateY(calc(-100% - 0.5rem));
+
+    .ReactionSelector__bubble-small,
+    .ReactionSelector__bubble-big {
+      display: none !important;
+    }
+  }
+
+  .TranslationToneSelector {
+    position: absolute;
+    top: 0;
+    left: 100%;
+    transform: translateX(0.5rem);
+  }
+
+  .no-forwards-notice,
+  .poll-subscriber-restriction-notice,
+  .poll-country-restriction-notice {
+    min-width: 12rem;
+  }
+}
+
+.translation-tone-menu .bubble {
+  min-width: 0;
+
+  .icon {
+    margin-inline: 0.25rem;
+  }
+}

@@ -1,0 +1,17 @@
+.container {
+  padding-inline: 1.5rem;
+}
+
+.sortableContainer {
+  position: relative;
+}
+
+.item {
+  margin-right: -1rem;
+  margin-bottom: 0;
+  margin-left: -1rem;
+
+  :global(.multiline-item) {
+    padding-inline-end: 3rem;
+  }
+}

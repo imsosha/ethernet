@@ -1,0 +1,6 @@
+{
+  "name": "Crash Test Plugin",
+  "description": "Тестовый плагин, вызывающий намеренный сбой для проверки Safe Mode",
+  "version": "1.0.0",
+  "author": "Tester"
+}

@@ -1,0 +1,300 @@
+import type { FC } from '../../../lib/teact/teact';
+import {
+  memo, useMemo, useRef, useState,
+} from '../../../lib/teact/teact';
+import { getActions, getGlobal, withGlobal } from '../../../global';
+
+import type { ApiChatMember, ApiUserStatus } from '../../../api/types';
+import { ManagementScreens, NewChatMembersProgress } from '../../../types';
+
+import {
+  getHasAdminRight, isChatBasicGroup,
+  isChatChannel, isUserBot, isUserRightBanned, sortUserIds,
+} from '../../../global/helpers';
+import { filterPeersByQuery } from '../../../global/helpers/peers';
+import {
+  selectCanBanUsers, selectChat, selectChatFullInfo,
+} from '../../../global/selectors';
+import { unique } from '../../../util/iteratees';
+import sortChatIds from '../../common/helpers/sortChatIds';
+
+import usePeerStoriesPolling from '../../../hooks/polling/usePeerStoriesPolling';
+import useHistoryBack from '../../../hooks/useHistoryBack';
+import useInfiniteScroll from '../../../hooks/useInfiniteScroll';
+import useKeyboardListNavigation from '../../../hooks/useKeyboardListNavigation';
+import useLang from '../../../hooks/useLang';
+import useLastCallback from '../../../hooks/useLastCallback';
+import useOldLang from '../../../hooks/useOldLang';
+import usePeerSearch, { userGlobalSearch } from '../../../hooks/usePeerSearch';
+
+import NothingFound from '../../common/NothingFound';
+import PrivateChatInfo from '../../common/PrivateChatInfo';
+import Island, { IslandDescription } from '../../gili/layout/Island';
+import Switch from '../../gili/primitives/Switch';
+import FloatingActionButton from '../../ui/FloatingActionButton';
+import InfiniteScroll from '../../ui/InfiniteScroll';
+import InputText from '../../ui/InputText';
+import ListItem, { type MenuItemContextAction } from '../../ui/ListItem';
+import Loading from '../../ui/Loading';
+
+type OwnProps = {
+  chatId: string;
+  isActive: boolean;
+  noAdmins?: boolean;
+  onClose: NoneToVoidFunction;
+  onScreenSelect?: (screen: ManagementScreens) => void;
+  onChatMemberSelect?: (memberId: string, isPromotedByCurrentUser?: boolean) => void;
+};
+
+type StateProps = {
+  userStatusesById: Record<string, ApiUserStatus>;
+  members?: ApiChatMember[];
+  canAddMembers?: boolean;
+  adminMembersById?: Record<string, ApiChatMember>;
+  isChannel?: boolean;
+  localContactIds?: string[];
+  currentUserId?: string;
+  canDeleteMembers?: boolean;
+  areParticipantsHidden?: boolean;
+  canHideParticipants?: boolean;
+};
+
+const ManageGroupMembers: FC<OwnProps & StateProps> = ({
+  chatId,
+  noAdmins,
+  members,
+  canAddMembers,
+  adminMembersById,
+  userStatusesById,
+  isChannel,
+  isActive,
+  localContactIds,
+  currentUserId,
+  canDeleteMembers,
+  areParticipantsHidden,
+  canHideParticipants,
+  onClose,
+  onScreenSelect,
+  onChatMemberSelect,
+}) => {
+  const {
+    openChat, closeManagement,
+    toggleParticipantsHidden, setNewChatMembersDialogState, toggleManagement,
+    openDeleteMemberModal,
+  } = getActions();
+  const oldLang = useOldLang();
+  const lang = useLang();
+  const inputRef = useRef<HTMLInputElement>();
+  const containerRef = useRef<HTMLDivElement>();
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const { result: foundIds, currentResultsQuery, isSearching } = usePeerSearch({
+    query: searchQuery,
+    queryFn: userGlobalSearch,
+    isDisabled: !noAdmins,
+  });
+  const relevantFoundIds = currentResultsQuery === searchQuery ? foundIds : undefined;
+
+  const adminIds = useMemo(() => {
+    return noAdmins && adminMembersById ? Object.keys(adminMembersById) : [];
+  }, [adminMembersById, noAdmins]);
+
+  const memberIds = useMemo(() => {
+    // No need for expensive global updates on users, so we avoid them
+    const usersById = getGlobal().users.byId;
+    if (!members || !usersById) {
+      return [];
+    }
+
+    const userIds = sortUserIds(
+      members.map(({ userId }) => userId),
+      usersById,
+      userStatusesById,
+    );
+
+    return noAdmins ? userIds.filter((userId) => !adminIds.includes(userId)) : userIds;
+  }, [members, userStatusesById, noAdmins, adminIds]);
+
+  usePeerStoriesPolling(memberIds);
+
+  const displayedIds = useMemo(() => {
+    // No need for expensive global updates on users, so we avoid them
+    const usersById = getGlobal().users.byId;
+    const shouldUseSearchResults = Boolean(searchQuery);
+    const listedIds = !shouldUseSearchResults
+      ? memberIds
+      : (localContactIds ? filterPeersByQuery({ ids: localContactIds, query: searchQuery, type: 'user' }) : []);
+
+    return sortChatIds(
+      unique([
+        ...listedIds,
+        ...(relevantFoundIds || []),
+      ]).filter((contactId) => {
+        const user = usersById[contactId];
+        if (!user) {
+          return true;
+        }
+
+        return (isChannel || user.canBeInvitedToGroup || !isUserBot(user))
+          && (!noAdmins || !adminIds.includes(contactId));
+      }),
+      true,
+    );
+  }, [memberIds, localContactIds, searchQuery, relevantFoundIds, isChannel, noAdmins, adminIds]);
+
+  const [viewportIds, getMore] = useInfiniteScroll(undefined, displayedIds, Boolean(searchQuery));
+
+  const handleMemberClick = useLastCallback((id: string) => {
+    if (noAdmins) {
+      onChatMemberSelect!(id, true);
+      onScreenSelect!(ManagementScreens.ChatNewAdminRights);
+    } else {
+      closeManagement();
+      openChat({ id });
+    }
+  });
+
+  const handleFilterChange = useLastCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  });
+
+  const handleKeyDown = useKeyboardListNavigation(containerRef, isActive, (index) => {
+    if (viewportIds && viewportIds.length > 0) {
+      handleMemberClick(viewportIds[index === -1 ? 0 : index]);
+    }
+  }, '.ListItem-button', true);
+
+  const handleToggleParticipantsHidden = useLastCallback(() => {
+    toggleParticipantsHidden({ chatId, isEnabled: !areParticipantsHidden });
+  });
+
+  const handleNewMemberDialogOpen = useLastCallback(() => {
+    toggleManagement();
+    setNewChatMembersDialogState({ newChatMembersProgress: NewChatMembersProgress.InProgress });
+  });
+
+  useHistoryBack({
+    isActive,
+    onBack: onClose,
+  });
+
+  function getMemberContextAction(memberId: string): MenuItemContextAction[] | undefined {
+    return memberId === currentUserId || !canDeleteMembers ? undefined : [{
+      title: oldLang('lng_context_remove_from_group'),
+      icon: 'stop',
+      handler: () => {
+        openDeleteMemberModal({ chatId, peerId: memberId });
+      },
+    }];
+  }
+
+  function renderSearchField() {
+    return (
+      <Island dir={oldLang.isRtl ? 'rtl' : undefined}>
+        <InputText
+          ref={inputRef}
+          value={searchQuery}
+          onChange={handleFilterChange}
+          placeholder={oldLang('Search')}
+          noMargin
+        />
+      </Island>
+    );
+  }
+
+  return (
+    <div className="Management ManageGroupMembers">
+      <div className="panel-content">
+        {noAdmins && renderSearchField()}
+        {canHideParticipants && !isChannel && (
+          <>
+            <Island>
+              <ListItem icon="group" ripple onClick={handleToggleParticipantsHidden}>
+                <span>{oldLang('ChannelHideMembers')}</span>
+                <Switch checked={Boolean(areParticipantsHidden)} />
+              </ListItem>
+            </Island>
+            <IslandDescription>
+              {oldLang(areParticipantsHidden ? 'GroupMembers.MembersHiddenOn' : 'GroupMembers.MembersHiddenOff')}
+            </IslandDescription>
+          </>
+        )}
+        {viewportIds?.length ? (
+          <Island className="island-list">
+            <InfiniteScroll
+              className="picker-list custom-scroll"
+              items={displayedIds}
+              onLoadMore={getMore}
+              noScrollRestore={Boolean(searchQuery)}
+              ref={containerRef}
+              onKeyDown={handleKeyDown}
+            >
+              {viewportIds.map((id) => (
+                <ListItem
+                  key={id}
+                  className="chat-item-clickable scroll-item"
+                  onClick={() => handleMemberClick(id)}
+                  contextActions={getMemberContextAction(id)}
+                  withPortalForMenu
+                >
+                  <PrivateChatInfo userId={id} forceShowSelf withStory />
+                </ListItem>
+              ))}
+            </InfiniteScroll>
+          </Island>
+        ) : !isSearching && viewportIds && !viewportIds.length ? (
+          <NothingFound
+            teactOrderKey={0}
+            key="nothing-found"
+            className="mt-2"
+            text={lang(isChannel ? 'NoSubscribersFound' : 'NoMembersFound')}
+          />
+        ) : (
+          <Loading />
+        )}
+      </div>
+      {canAddMembers && (
+        <FloatingActionButton
+          isShown
+          onClick={handleNewMemberDialogOpen}
+          ariaLabel={oldLang('lng_channel_add_users')}
+          iconName="add-user-filled"
+        />
+      )}
+    </div>
+  );
+};
+
+export default memo(withGlobal<OwnProps>(
+  (global, { chatId }): Complete<StateProps> => {
+    const chat = selectChat(global, chatId);
+    const { statusesById: userStatusesById } = global.users;
+    const { members, adminMembersById, areParticipantsHidden } = selectChatFullInfo(global, chatId) || {};
+    const isChannel = chat && isChatChannel(chat);
+    const { userIds: localContactIds } = global.contactList || {};
+    const hiddenMembersMinCount = global.appConfig.hiddenMembersMinCount;
+
+    const canDeleteMembers = selectCanBanUsers(global, chatId);
+
+    const canHideParticipants = canDeleteMembers && chat && !isChatBasicGroup(chat) && chat.membersCount !== undefined
+      && hiddenMembersMinCount !== undefined && chat.membersCount >= hiddenMembersMinCount;
+
+    const canAddMembers = chat && ((getHasAdminRight(chat, 'inviteUsers')
+      || (!isChannel && !isUserRightBanned(chat, 'inviteUsers')))
+    || chat.isCreator
+    );
+
+    return {
+      areParticipantsHidden: Boolean(chat && areParticipantsHidden),
+      members,
+      canAddMembers,
+      adminMembersById,
+      userStatusesById,
+      isChannel,
+      localContactIds,
+      canDeleteMembers,
+      currentUserId: global.currentUserId,
+      canHideParticipants,
+    };
+  },
+)(ManageGroupMembers));

@@ -1,0 +1,27 @@
+.root {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  background: #000000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: all;
+  opacity: 1;
+  transition: opacity 0.6s cubic-bezier(0.33, 1, 0.68, 1);
+
+  &.fading {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+.logoWrapper {
+  width: 200px;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  -webkit-user-select: none;
+}

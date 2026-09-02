@@ -1,0 +1,54 @@
+@use "codeHighlight";
+
+.CodeBlock {
+  position: relative;
+
+  overflow: hidden;
+
+  margin: 0;
+  margin-block: 0.25rem;
+  padding-block: 0.1875rem;
+  border-radius: 0.25rem;
+
+  color: var(--color-text);
+
+  background-color: var(--color-code-bg);
+
+  .code-title {
+    overflow: hidden;
+
+    margin-bottom: 0.5rem;
+
+    font-size: calc(var(--message-text-size, 1rem) - 0.125rem);
+    font-weight: var(--font-weight-medium);
+    color: var(--accent-color);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .code-block {
+    overflow: hidden;
+    margin: 0;
+    white-space: pre-wrap;
+
+    &:hover {
+      .code-overlay {
+        opacity: 1;
+      }
+    }
+
+    &.no-word-wrap {
+      padding-bottom: 0.25rem;
+      white-space: pre;
+    }
+
+    @include codeHighlight.code-highlight-theme(true);
+    @include codeHighlight.code-highlight-tokens;
+
+    .hljs {
+      overflow-x: auto;
+      display: block;
+      color: var(--color-text);
+    }
+  }
+}
