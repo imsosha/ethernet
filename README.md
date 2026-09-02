@@ -8,6 +8,11 @@
   <b>Modern, aesthetic, and customizable Telegram desktop client powered by Web Z & Electron.</b>
 </p>
 
+<p align="center">
+  <b>English</b> •
+  <a href="README.ru.md">Русский</a>
+</p>
+
 ---
 
 ## ✨ Features
