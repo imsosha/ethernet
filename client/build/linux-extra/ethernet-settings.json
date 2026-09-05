@@ -1,0 +1,118 @@
+{
+  "enabledPlugins": [
+    "peer-id-dc"
+  ],
+  "theme": "eth",
+  "mod": {
+    "colors": {
+      "--color-background": "#16171a",
+      "--color-background-secondary": "#212328",
+      "--color-background-secondary-accent": "#292c33",
+      "--color-background-sidebar": "#1a1b1f",
+      "--color-background-selected": "#2a2e37",
+      "--color-borders": "#2a2d34",
+      "--color-dividers": "#24272e",
+      "--color-text": "#f3f4f6",
+      "--color-links": "#fd5b00",
+      "--color-text-secondary": "#b7a49d",
+      "--color-primary": "#f35920",
+      "--color-text-meta-colored": "#ff7636",
+      "--color-background-own": "#5f341e",
+      "--color-chat-active": "#58352b",
+      "--color-active": "#3b82f6",
+      "--color-interactive-active": "#3b82f6",
+      "--color-chat-hover": "rgba(255, 255, 255, 0.08)",
+      "--color-interactive-hover": "rgba(255, 255, 255, 0.08)",
+      "--color-item-hover": "rgba(255, 255, 255, 0.08)"
+    },
+    "radii": {
+      "ui": 16,
+      "messages": 16,
+      "buttons": 12,
+      "avatars": 50
+    },
+    "borderRadius": 16,
+    "blurStrength": 20,
+    "blurGlare": 40,
+    "blurRefraction": 60,
+    "blurTargets": {
+      "sidebar": true,
+      "header": true,
+      "bubbles": true,
+      "menus": true
+    },
+    "animationDuration": 350,
+    "animationCurve": "0.03, 0.97, 0.19, 0.99",
+    "animationsDisabled": false,
+    "chatWidth": "wide",
+    "messageAlignOwn": "right",
+    "messageAlignOther": "left",
+    "wallpaperFile": "ethernet-1788456472234.mp4",
+    "wallpaperKind": "video"
+  },
+  "wallpaper": "ethernet-1788456472234",
+  "themeWallpapers": {
+    "eth": {
+      "file": "ethernet-1788456472234.mp4",
+      "kind": "video",
+      "slug": "ethernet-1788456472234"
+    }
+  },
+  "themeMods": {
+    "eth": {
+      "colors": {
+        "--color-background": "#16171a",
+        "--color-background-secondary": "#212328",
+        "--color-background-secondary-accent": "#292c33",
+        "--color-background-sidebar": "#1a1b1f",
+        "--color-background-selected": "#2a2e37",
+        "--color-borders": "#2a2d34",
+        "--color-dividers": "#24272e",
+        "--color-text": "#f3f4f6",
+        "--color-links": "#fd5b00",
+        "--color-text-secondary": "#b7a49d",
+        "--color-primary": "#f35920",
+        "--color-text-meta-colored": "#ff7636",
+        "--color-background-own": "#5f341e",
+        "--color-chat-active": "#58352b",
+        "--color-active": "#3b82f6",
+        "--color-interactive-active": "#3b82f6",
+        "--color-chat-hover": "rgba(255, 255, 255, 0.08)",
+        "--color-interactive-hover": "rgba(255, 255, 255, 0.08)",
+        "--color-item-hover": "rgba(255, 255, 255, 0.08)"
+      },
+      "radii": {
+        "ui": 16,
+        "messages": 16,
+        "buttons": 12,
+        "avatars": 50
+      },
+      "borderRadius": 16,
+      "blurStrength": 20,
+      "blurGlare": 40,
+      "blurRefraction": 60,
+      "blurTargets": {
+        "sidebar": true,
+        "header": true,
+        "bubbles": true,
+        "menus": true
+      },
+      "animationDuration": 350,
+      "animationCurve": "0.03, 0.97, 0.19, 0.99",
+      "animationsDisabled": false,
+      "chatWidth": "wide",
+      "messageAlignOwn": "right",
+      "messageAlignOther": "left",
+      "wallpaperFile": "ethernet-1788456472234.mp4",
+      "wallpaperKind": "video"
+    }
+  },
+  "proxySettings": {
+    "enabled": false,
+    "activeProxyId": null,
+    "proxies": []
+  },
+  "disableAllNotifications": false,
+  "disableCloseToTray": false,
+  "safeMode": false
+}

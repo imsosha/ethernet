@@ -200,11 +200,21 @@
     "linux": {
       "executableName": "Ethernet",
       "target": [
+        "appImage",
         "tar.gz",
         "dir"
       ],
       "category": "Network;Chat;InstantMessaging;",
-      "icon": "public/icon-512x512.png"
+      "icon": "public/icon-512x512.png",
+      "extraFiles": [
+        {
+          "from": "build/linux-extra",
+          "to": ".",
+          "filter": [
+            "*"
+          ]
+        }
+      ]
     },
     "portable": {
       "artifactName": "Ethernet-Windows-${arch}.exe"

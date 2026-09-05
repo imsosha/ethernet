@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Ethernet
+Comment=Ethernet Telegram Desktop Client
+Exec=bash -c 'cd "$(dirname "%k")" && ./start.sh %U'
+Icon=./resources/app/public/icon-512x512.png
+Terminal=false
+Type=Application
+Categories=Network;Chat;InstantMessaging;
+StartupWMClass=ethernet
+MimeType=x-scheme-handler/tg;x-scheme-handler/tonsite;
