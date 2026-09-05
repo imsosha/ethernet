@@ -53,6 +53,29 @@ protocol.registerSchemesAsPrivileged([
   },
 ]);
 
+const ALLOWED_EXTERNAL_PROTOCOLS = new Set(['http:', 'https:', 'tg:', 'mailto:']);
+
+function isSafeExternalUrl(rawUrl) {
+  if (!rawUrl || typeof rawUrl !== 'string') return false;
+  try {
+    const trimmed = rawUrl.trim();
+    // Блокируем любые UNC-пути, обратные слэши, управляющие символы и кавычки (защита от argument injection в Windows)
+    if (trimmed.startsWith('\\\\') || trimmed.startsWith('//') || trimmed.includes('\\') || /[\s"'<>\r\n\t\x00-\x1f]/.test(trimmed)) {
+      return false;
+    }
+    const parsed = new URL(trimmed);
+    if (!ALLOWED_EXTERNAL_PROTOCOLS.has(parsed.protocol)) {
+      return false;
+    }
+    if (parsed.hostname && parsed.hostname.includes('\\')) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function readJson(file, fallback) {
   try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return fallback; }
 }
@@ -115,9 +138,11 @@ function registerAppProtocol() {
       if ((pathname.startsWith('/ethernet/theme/') || pathname.startsWith('/hermes/theme/')) && pathname.endsWith('.css')) {
         try {
           const prefix = pathname.startsWith('/ethernet/theme/') ? '/ethernet/theme/' : '/hermes/theme/';
-          const themeRawName = decodeURIComponent(pathname.slice(prefix.length, -4));
-          const target = path.join(THEMES_DIR, `${themeRawName}.css`);
-          if (fs.existsSync(target)) {
+          const rawName = decodeURIComponent(pathname.slice(prefix.length, -4));
+          const safeThemeName = path.basename(rawName);
+          const target = path.normalize(path.join(THEMES_DIR, `${safeThemeName}.css`));
+          const resolvedThemes = path.resolve(THEMES_DIR);
+          if (target.startsWith(resolvedThemes + path.sep) && fs.existsSync(target)) {
             return new Response(fs.readFileSync(target, 'utf8'), {
               headers: { 'content-type': 'text/css; charset=utf-8' },
             });
@@ -165,8 +190,9 @@ function registerAppProtocol() {
 
       if (pathname.startsWith('/ethernet/wallpapers/') || pathname.startsWith('/hermes/wallpapers/')) {
         const file = path.basename(decodeURIComponent(pathname));
-        const target = path.join(WALLPAPERS_DIR, file);
-        if (fs.existsSync(target)) {
+        const target = path.normalize(path.join(WALLPAPERS_DIR, file));
+        const resolvedWallpapers = path.resolve(WALLPAPERS_DIR);
+        if (target.startsWith(resolvedWallpapers + path.sep) && fs.existsSync(target)) {
           const ext = path.extname(file).toLowerCase();
           const mimeTypes = {
             '.mp4': 'video/mp4',
@@ -204,7 +230,13 @@ function registerAppProtocol() {
 
       // --- Файлы dist клиента ---
       const relPath = pathname.replace(/^\/+/, '');
-      let filePath = path.join(DIST, relPath);
+      const filePath = path.normalize(path.join(DIST, relPath));
+      const resolvedDist = path.resolve(DIST);
+
+      // Защита от Path Traversal (выхода за пределы DIST)
+      if (!filePath.startsWith(resolvedDist + path.sep) && filePath !== resolvedDist) {
+        return new Response('Forbidden', { status: 403 });
+      }
 
       // Если файл существует на диске — отдаём его:
       if (fs.existsSync(filePath) && !fs.statSync(filePath).isDirectory()) {
@@ -308,9 +340,49 @@ function createWindow() {
   });
 
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('app://')) return { action: 'allow' };
-    shell.openExternal(url);
+    if (url.startsWith('app://telegram/')) {
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          webPreferences: {
+            preload: path.join(__dirname, 'preload.cjs'),
+            contextIsolation: true,
+            nodeIntegration: false,
+            sandbox: false,
+            backgroundThrottling: false,
+          },
+        },
+      };
+    }
+    if (isSafeExternalUrl(url)) {
+      shell.openExternal(url);
+    } else {
+      console.warn('[Security] Blocked window.open for unsafe URL:', url);
+    }
     return { action: 'deny' };
+  });
+
+  win.webContents.on('will-navigate', (event, targetUrl) => {
+    if (!targetUrl.startsWith('app://telegram/')) {
+      event.preventDefault();
+      if (isSafeExternalUrl(targetUrl)) {
+        shell.openExternal(targetUrl);
+      } else {
+        console.warn('[Security] Blocked will-navigate for unsafe URL:', targetUrl);
+      }
+    }
+  });
+
+  win.webContents.on('will-redirect', (event, targetUrl) => {
+    if (!targetUrl.startsWith('app://telegram/')) {
+      event.preventDefault();
+      console.warn('[Security] Blocked will-redirect outside app:', targetUrl);
+    }
+  });
+
+  win.webContents.on('will-attach-webview', (event) => {
+    event.preventDefault();
+    console.warn('[Security] Blocked webview attachment');
   });
 
   return win;
@@ -335,11 +407,15 @@ function createTrayMenuWindow() {
     show: false,
     focusable: true,
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
+      preload: path.join(__dirname, 'preload-tray.cjs'),
+      nodeIntegration: false,
+      contextIsolation: true,
       backgroundThrottling: false,
     },
   });
+
+  trayMenuWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  trayMenuWindow.webContents.on('will-navigate', (event) => event.preventDefault());
 
   trayMenuWindow.setMenu(null);
   trayMenuWindow.loadFile(path.join(__dirname, 'tray-menu.html'));

@@ -65,27 +65,37 @@
   </div>
 
   <script>
-    const { ipcRenderer } = require('electron');
+    const bridge = window.trayBridge || (typeof require === 'function' ? (() => {
+      const { ipcRenderer } = require('electron');
+      return {
+        onSetState: (cb) => ipcRenderer.on('tray:set-state', (_e, data) => cb(data)),
+        actionOpen: () => ipcRenderer.send('tray:action-open'),
+        actionToggleNotifs: () => ipcRenderer.send('tray:action-toggle-notifs'),
+        actionQuit: () => ipcRenderer.send('tray:action-quit'),
+      };
+    })() : null);
 
     const btnOpen = document.getElementById('btn-open');
     const btnToggleNotifs = document.getElementById('btn-toggle-notifs');
     const btnQuit = document.getElementById('btn-quit');
 
-    ipcRenderer.on('tray:set-state', (_e, { notificationsDisabled }) => {
-      btnToggleNotifs.textContent = notificationsDisabled ? 'Enable notifications' : 'Disable notifications';
-    });
+    if (bridge) {
+      bridge.onSetState(({ notificationsDisabled }) => {
+        btnToggleNotifs.textContent = notificationsDisabled ? 'Enable notifications' : 'Disable notifications';
+      });
 
-    btnOpen.addEventListener('click', () => {
-      ipcRenderer.send('tray:action-open');
-    });
+      btnOpen.addEventListener('click', () => {
+        bridge.actionOpen();
+      });
 
-    btnToggleNotifs.addEventListener('click', () => {
-      ipcRenderer.send('tray:action-toggle-notifs');
-    });
+      btnToggleNotifs.addEventListener('click', () => {
+        bridge.actionToggleNotifs();
+      });
 
-    btnQuit.addEventListener('click', () => {
-      ipcRenderer.send('tray:action-quit');
-    });
+      btnQuit.addEventListener('click', () => {
+        bridge.actionQuit();
+      });
+    }
   </script>
 </body>
 </html>

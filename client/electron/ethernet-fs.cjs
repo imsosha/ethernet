@@ -36,9 +36,18 @@ function registerHermesFsHandlers() {
   ensureDirs();
 
   const regHandle = (channel, fn) => {
-    ipcMain.handle(channel, fn);
+    const wrappedFn = (event, ...args) => {
+      const senderUrl = event.senderFrame?.url || (typeof event.sender?.getURL === 'function' ? event.sender.getURL() : '');
+      if (!senderUrl.startsWith('app://telegram/')) {
+        console.warn(`[Security] Blocked unauthorized IPC call to '${channel}' from '${senderUrl}'`);
+        throw new Error('Unauthorized');
+      }
+      return fn(event, ...args);
+    };
+
+    ipcMain.handle(channel, wrappedFn);
     if (channel.startsWith('hermes:')) {
-      ipcMain.handle(channel.replace('hermes:', 'ethernet:'), fn);
+      ipcMain.handle(channel.replace('hermes:', 'ethernet:'), wrappedFn);
     }
   };
 
@@ -54,12 +63,18 @@ function registerHermesFsHandlers() {
   regHandle('hermes:theme-read', (_e, name) => {
     const clean = path.basename(String(name || ''));
     if (!clean.endsWith('.css') || clean.includes('..')) throw new Error('bad name');
-    return fs.readFileSync(path.join(THEMES_DIR, clean), 'utf8');
+    const target = path.normalize(path.join(THEMES_DIR, clean));
+    const resolvedThemes = path.resolve(THEMES_DIR);
+    if (!target.startsWith(resolvedThemes + path.sep)) throw new Error('bad path');
+    return fs.readFileSync(target, 'utf8');
   });
 
   regHandle('hermes:theme-save', (_e, name, css, wallpaperInfo) => {
     const safe = safeName(name, '.css');
-    fs.writeFileSync(path.join(THEMES_DIR, safe), String(css), 'utf8');
+    const target = path.normalize(path.join(THEMES_DIR, safe));
+    const resolvedThemes = path.resolve(THEMES_DIR);
+    if (!target.startsWith(resolvedThemes + path.sep)) throw new Error('bad path');
+    fs.writeFileSync(target, String(css || ''), 'utf8');
     const cleanThemeName = safe.replace(/\.css$/, '');
     if (wallpaperInfo) {
       ethernetSettings.setThemeWallpaper(cleanThemeName, wallpaperInfo);
@@ -75,7 +90,12 @@ function registerHermesFsHandlers() {
   regHandle('hermes:theme-delete', (_e, name) => {
     const clean = path.basename(String(name || ''));
     if (!clean.endsWith('.css') || clean.includes('..')) throw new Error('bad name');
-    fs.unlinkSync(path.join(THEMES_DIR, clean));
+    const target = path.normalize(path.join(THEMES_DIR, clean));
+    const resolvedThemes = path.resolve(THEMES_DIR);
+    if (!target.startsWith(resolvedThemes + path.sep)) throw new Error('bad path');
+    if (fs.existsSync(target)) {
+      fs.unlinkSync(target);
+    }
     ethernetSettings.setThemeWallpaper(clean.replace(/\.css$/, ''), null);
     return true;
   });
@@ -113,20 +133,28 @@ function registerHermesFsHandlers() {
 
   regHandle('hermes:plugin-read', (_e, id) => {
     if (!/^[\w-]+$/.test(id)) throw new Error('bad id');
-    const read = (f) => { try { return fs.readFileSync(path.join(PLUGINS_DIR, id, f), 'utf8'); } catch { return ''; } };
+    const safeId = path.basename(id);
+    const dir = path.normalize(path.join(PLUGINS_DIR, safeId));
+    const resolvedPlugins = path.resolve(PLUGINS_DIR);
+    if (!dir.startsWith(resolvedPlugins + path.sep)) throw new Error('bad path');
+    const read = (f) => { try { return fs.readFileSync(path.join(dir, f), 'utf8'); } catch { return ''; } };
     return { manifest: read('manifest.json') || '{}', code: read('index.js') };
   });
 
   // Сохранение плагина: { name, description, code } -> plugins/<id>/{manifest.json,index.js}
   regHandle('hermes:plugin-save', (_e, plugin) => {
-    const id = safeName(plugin.name || 'plugin', '').toLowerCase();
+    if (!plugin || typeof plugin !== 'object') throw new Error('bad plugin');
+    const rawId = safeName(plugin.name || 'plugin', '').toLowerCase();
+    const id = rawId.replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48);
     if (!id) throw new Error('bad name');
-    const dir = path.join(PLUGINS_DIR, id);
+    const dir = path.normalize(path.join(PLUGINS_DIR, id));
+    const resolvedPlugins = path.resolve(PLUGINS_DIR);
+    if (!dir.startsWith(resolvedPlugins + path.sep)) throw new Error('bad path');
     fs.mkdirSync(dir, { recursive: true });
     const manifest = {
-      name: plugin.name || id,
-      description: plugin.description || '',
-      version: plugin.version || '0.1.0',
+      name: String(plugin.name || id).slice(0, 64),
+      description: String(plugin.description || '').slice(0, 256),
+      version: String(plugin.version || '0.1.0').slice(0, 16),
       author: 'user',
     };
     fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf8');
@@ -136,14 +164,19 @@ function registerHermesFsHandlers() {
 
   regHandle('hermes:plugin-delete', (_e, id) => {
     if (!/^[\w-]+$/.test(id)) throw new Error('bad id');
-    fs.rmSync(path.join(PLUGINS_DIR, id), { recursive: true, force: true });
+    const safeId = path.basename(id);
+    const dir = path.normalize(path.join(PLUGINS_DIR, safeId));
+    const resolvedPlugins = path.resolve(PLUGINS_DIR);
+    if (!dir.startsWith(resolvedPlugins + path.sep)) throw new Error('bad path');
+    fs.rmSync(dir, { recursive: true, force: true });
     ethernetSettings.removePlugin(id);
     return true;
   });
 
   regHandle('hermes:plugin-toggle', (_e, id) => {
     if (!/^[\w-]+$/.test(id)) throw new Error('bad id');
-    return ethernetSettings.togglePlugin(id);
+    const safeId = path.basename(id);
+    return ethernetSettings.togglePlugin(safeId);
   });
 
   // Диалог выбора файла (для загрузки .css/.js с диска)
@@ -196,13 +229,19 @@ function registerHermesFsHandlers() {
   // --- Ethernet-обои: медиафайлы в wallpapers/ ---
   regHandle('hermes:wallpaper-set-file', (_e, payload) => {
     // payload = { name, content/base64, originalPath, themeName }
+    if (!payload || typeof payload !== 'object') throw new Error('bad payload');
     const rawData = payload.base64 || payload.content;
+    if (!rawData || typeof rawData !== 'string') throw new Error('bad media content');
+    // Ограничение 70MB base64 (~50MB бинарных данных) для защиты от OOM Crash
+    if (rawData.length > 70 * 1024 * 1024) throw new Error('media too large');
+
     const ext = (path.extname(payload.name || '') || '.png').toLowerCase().replace(/[^\w.]/g, '');
     if (!['.png', '.jpg', '.jpeg', '.webp', '.gif', '.mp4', '.webm'].includes(ext)) {
       throw new Error('bad media type');
     }
     const slug = `ethernet-${Date.now()}`;
     const filename = slug + ext;
+    const resolvedWallpapers = path.resolve(WALLPAPERS_DIR);
 
     // Храним ТОЛЬКО последние выбранные обои: удаляем старые файлы из wallpapers/
     try {
@@ -210,19 +249,25 @@ function registerHermesFsHandlers() {
         const existing = fs.readdirSync(WALLPAPERS_DIR);
         for (const oldFile of existing) {
           try {
-            fs.unlinkSync(path.join(WALLPAPERS_DIR, oldFile));
+            const oldTarget = path.normalize(path.join(WALLPAPERS_DIR, oldFile));
+            if (oldTarget.startsWith(resolvedWallpapers + path.sep)) {
+              fs.unlinkSync(oldTarget);
+            }
           } catch {}
         }
       }
     } catch {}
 
-    fs.writeFileSync(path.join(WALLPAPERS_DIR, filename), Buffer.from(rawData, 'base64'));
+    const targetFile = path.normalize(path.join(WALLPAPERS_DIR, filename));
+    if (!targetFile.startsWith(resolvedWallpapers + path.sep)) throw new Error('bad path');
+    fs.writeFileSync(targetFile, Buffer.from(rawData, 'base64'));
+
     const isVideo = ['.mp4', '.webm'].includes(ext);
     const wallpaperInfo = {
       slug,
       file: filename,
       kind: isVideo ? 'video' : 'image',
-      originalPath: payload.originalPath || payload.name,
+      originalPath: String(payload.originalPath || payload.name || '').slice(0, 256),
     };
     const currentTheme = payload.themeName || ethernetSettings.getTheme() || 'default';
     ethernetSettings.setThemeWallpaper(currentTheme, wallpaperInfo);
@@ -232,12 +277,16 @@ function registerHermesFsHandlers() {
   regHandle('hermes:wallpaper-clear', (_e, themeName) => {
     const currentTheme = themeName || ethernetSettings.getTheme() || 'default';
     ethernetSettings.setThemeWallpaper(currentTheme, null);
+    const resolvedWallpapers = path.resolve(WALLPAPERS_DIR);
     try {
       if (fs.existsSync(WALLPAPERS_DIR)) {
         const existing = fs.readdirSync(WALLPAPERS_DIR);
         for (const oldFile of existing) {
           try {
-            fs.unlinkSync(path.join(WALLPAPERS_DIR, oldFile));
+            const oldTarget = path.normalize(path.join(WALLPAPERS_DIR, oldFile));
+            if (oldTarget.startsWith(resolvedWallpapers + path.sep)) {
+              fs.unlinkSync(oldTarget);
+            }
           } catch {}
         }
       }
@@ -294,7 +343,22 @@ function registerHermesFsHandlers() {
   });
 
   regHandle('hermes:proxy-save', async (_e, proxyConfig) => {
-    const state = ethernetSettings.saveProxy(proxyConfig);
+    if (!proxyConfig || typeof proxyConfig !== 'object') throw new Error('bad proxy config');
+    const server = String(proxyConfig.server || '').trim();
+    const port = Number(proxyConfig.port);
+    if (!server || server.includes(';') || server.includes(' ') || server.includes('\n')) {
+      throw new Error('invalid proxy host');
+    }
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+      throw new Error('invalid proxy port');
+    }
+    const cleanConfig = {
+      ...proxyConfig,
+      server,
+      port,
+      protocol: proxyConfig.protocol === 'http' ? 'http' : 'socks5',
+    };
+    const state = ethernetSettings.saveProxy(cleanConfig);
     await proxyEngine.applyNetworkState();
     return state;
   });

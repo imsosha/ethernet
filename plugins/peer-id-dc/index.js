@@ -226,11 +226,13 @@
           <div class="ripple-container"></div>
           <i class="icon icon-info ListItem-main-icon" aria-hidden="true"></i>
           <div class="multiline-item">
-            <span class="title" dir="auto">${peerId}</span>
+            <span class="title" dir="auto"></span>
             <span class="subtitle">ID</span>
           </div>
         </div>
       `;
+      const idTitleSpan = idItem.querySelector('.title');
+      if (idTitleSpan) idTitleSpan.textContent = String(peerId);
       idItem.addEventListener('click', (e) => {
         e.stopPropagation();
         copyText(peerId, 'Telegram ID');
@@ -248,11 +250,13 @@
             <div class="ripple-container"></div>
             <i class="icon icon-cloud-download ListItem-main-icon" aria-hidden="true"></i>
             <div class="multiline-item">
-              <span class="title" dir="auto">${dcText}</span>
+              <span class="title" dir="auto"></span>
               <span class="subtitle">Data Center</span>
             </div>
           </div>
         `;
+        const dcTitleSpan = dcItem.querySelector('.title');
+        if (dcTitleSpan) dcTitleSpan.textContent = String(dcText);
         dcItem.addEventListener('click', (e) => {
           e.stopPropagation();
           copyText(`DC ${dcId}`, 'Data Center');

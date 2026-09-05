@@ -45,6 +45,9 @@ function createNotificationWindow(mainWindow) {
   notifWindow.setMenu(null);
   notifWindow.setIgnoreMouseEvents(true, { forward: true });
 
+  notifWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  notifWindow.webContents.on('will-navigate', (event) => event.preventDefault());
+
   const notifHtmlPath = path.join(__dirname, 'notifications.html');
   if (fs.existsSync(notifHtmlPath)) {
     notifWindow.loadFile(notifHtmlPath);

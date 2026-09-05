@@ -7,6 +7,15 @@ function generateId() {
   return crypto.randomBytes(8).toString('hex');
 }
 
+function isValidHost(host) {
+  if (!host || typeof host !== 'string') return false;
+  return /^[a-zA-Z0-9.\-_\[\]]+$/.test(host) && !host.includes(';') && !host.includes(' ') && !host.includes('\n');
+}
+
+function isValidPort(port) {
+  return Number.isInteger(port) && port >= 1 && port <= 65535;
+}
+
 /**
  * Парсинг URI ссылок прокси (SOCKS5, HTTP)
  * @param {string} rawUri
@@ -24,7 +33,7 @@ function parseProxyUri(rawUri) {
       const params = new URLSearchParams(uriStr.slice(qIndex + 1));
       const server = params.get('server');
       const port = parseInt(params.get('port'), 10);
-      if (!server || !port) return null;
+      if (!isValidHost(server) || !isValidPort(port)) return null;
 
       const user = params.get('user') || params.get('username') || '';
       const pass = params.get('pass') || params.get('password') || '';
@@ -50,7 +59,7 @@ function parseProxyUri(rawUri) {
       const params = new URLSearchParams(uriStr.slice(qIndex + 1));
       const server = params.get('server');
       const port = parseInt(params.get('port'), 10);
-      if (!server || !port) return null;
+      if (!isValidHost(server) || !isValidPort(port)) return null;
 
       const user = params.get('user') || params.get('username') || '';
       const pass = params.get('pass') || params.get('password') || '';
@@ -75,6 +84,8 @@ function parseProxyUri(rawUri) {
       const parsed = new URL(uriStr.replace(/^socks:\/\//, 'socks5://'));
       const server = parsed.hostname;
       const port = parseInt(parsed.port, 10) || 1080;
+      if (!isValidHost(server) || !isValidPort(port)) return null;
+
       const username = decodeURIComponent(parsed.username || '');
       const password = decodeURIComponent(parsed.password || '');
       const name = decodeURIComponent(parsed.hash.replace(/^#/, '')) || `SOCKS5 ${server}:${port}`;
@@ -99,6 +110,8 @@ function parseProxyUri(rawUri) {
       const parsed = new URL(uriStr);
       const server = parsed.hostname;
       const port = parseInt(parsed.port, 10) || (uriStr.startsWith('https://') ? 443 : 8080);
+      if (!isValidHost(server) || !isValidPort(port)) return null;
+
       const username = decodeURIComponent(parsed.username || '');
       const password = decodeURIComponent(parsed.password || '');
       const name = decodeURIComponent(parsed.hash.replace(/^#/, '')) || `HTTP ${server}:${port}`;
@@ -123,6 +136,8 @@ function parseProxyUri(rawUri) {
       const parsed = new URL(`socks5://${uriStr}`);
       const server = parsed.hostname;
       const port = parseInt(parsed.port, 10);
+      if (!isValidHost(server) || !isValidPort(port)) return null;
+
       const username = decodeURIComponent(parsed.username || '');
       const password = decodeURIComponent(parsed.password || '');
 
