@@ -246,6 +246,7 @@ const SettingsEthernetThemes: FC<OwnProps> = ({ isActive, onReset }) => {
     try {
       await api.themeActivate(rawName);
       if (loader?.applyTheme) await loader.applyTheme(rawName);
+      window.dispatchEvent(new CustomEvent('ethernet:plugins-updated'));
     } catch (err) {
       console.error('[ethernet] activate error', err);
     } finally {
@@ -272,6 +273,7 @@ const SettingsEthernetThemes: FC<OwnProps> = ({ isActive, onReset }) => {
           : { ...ETH_DEFAULT_COLORS },
       };
       if (loader?.applyMod) loader.applyMod(finalMod);
+      window.dispatchEvent(new CustomEvent('ethernet:plugins-updated'));
     } catch (err) {
       console.error('[ethernet] activate default error', err);
     } finally {

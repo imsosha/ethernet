@@ -147,6 +147,14 @@ const SettingsEthernetPlugins: FC<OwnProps> = ({ isActive, onReset }) => {
   useEffect(() => {
     loadPlugins();
     loadSafeModeState();
+
+    const handleUpdate = () => {
+      loadPlugins();
+    };
+    window.addEventListener('ethernet:plugins-updated', handleUpdate);
+    return () => {
+      window.removeEventListener('ethernet:plugins-updated', handleUpdate);
+    };
   }, [loadPlugins, loadSafeModeState]);
 
   const handleToggleSafeMode = useLastCallback(async () => {
@@ -226,8 +234,19 @@ const SettingsEthernetPlugins: FC<OwnProps> = ({ isActive, onReset }) => {
           contentToInspect = pkg.code;
           pkgMeta = { ...pkg };
           if (pkg.name) fallbackName = pkg.name;
+        } else if (pkg.plugins && Array.isArray(pkg.plugins) && pkg.plugins.length > 0) {
+          const firstPlugin = pkg.plugins[0];
+          if (firstPlugin && firstPlugin.code) {
+            contentToInspect = firstPlugin.code;
+            pkgMeta = {
+              ...firstPlugin,
+              themeDependency: pkg.name || firstPlugin.themeDependency,
+              requiredForTheme: pkg.name || firstPlugin.requiredForTheme,
+            };
+            if (firstPlugin.name) fallbackName = firstPlugin.name;
+          }
         } else if (pkg.css) {
-          setBlockedImportMessage('Выбранный .eth пакет является Темой оформления. Для импорта тем откройте раздел «Темы» и нажмите «Импорт темы».');
+          setBlockedImportMessage('Выбранный .eth пакет является Темой оформления без плагинов. Для импорта тем откройте раздел «Темы» и нажмите «Импорт темы».');
           return;
         }
       } catch {}
