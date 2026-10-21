@@ -462,12 +462,24 @@ function registerHermesFsHandlers() {
     return ethernetSettings.setPluginPermission(id, permission, granted);
   });
 
-  // Сохранение плагина: { name, description, code, permissions, grantedPermissions } -> plugins/<id>/{manifest.json,index.js}
+  // Сохранение плагина: { id, name, description, code, permissions, grantedPermissions } -> plugins/<id>/{manifest.json,index.js}
   regHandle('hermes:plugin-save', (_e, plugin) => {
     if (!plugin || typeof plugin !== 'object') throw new Error('bad plugin');
-    const rawId = safeName(plugin.name || 'plugin', '').toLowerCase();
-    const id = (plugin.id || rawId.replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '')).slice(0, 48);
-    if (!id) throw new Error('bad name');
+
+    let candidate = '';
+    if (plugin.id && typeof plugin.id === 'string') {
+      candidate = String(plugin.id).toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');
+    }
+    if (!candidate && plugin.name && typeof plugin.name === 'string') {
+      const ruMap = {
+        'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'yo','ж':'zh','з':'z','и':'i','й':'y',
+        'к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f',
+        'х':'kh','ц':'ts','ч':'ch','ш':'sh','щ':'shch','ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya'
+      };
+      const translit = String(plugin.name).split('').map((c) => ruMap[c.toLowerCase()] || c).join('');
+      candidate = translit.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');
+    }
+    const id = (candidate || `plugin-${Date.now()}`).slice(0, 48);
 
     const code = String(plugin.code || '');
     let declaredPermissions = Array.isArray(plugin.permissions) ? plugin.permissions : [];

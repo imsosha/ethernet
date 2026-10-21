@@ -3220,7 +3220,7 @@
 "EthernetThemesDesc" = "Custom styles, CSS editor";
 "EthernetThemesHint" = "Click a theme to apply it. Themes override CSS variables of the client.";
 "EthernetThemeActive" = "Active";
-"EthernetImportCssFile" = "Import CSS file...";
+"EthernetImportCssFile" = "Import .eth...";
 "EthernetNewTheme" = "New theme (CSS editor)";
 "EthernetEditTheme" = "Edit theme";
 "EthernetThemeName" = "Theme name";
@@ -3235,7 +3235,7 @@
 "EthernetOptimization" = "Optimization & Performance";
 "EthernetDisableNftGifts" = "Disable NFT gifts rendering";
 "EthernetDisableNftGiftsDesc" = "Reduces CPU and GPU usage on low-end systems by skipping NFT gift rendering and animations";
-"EthernetImportJsFile" = "Import JS file...";
+"EthernetImportJsFile" = "Import .eth...";
 "EthernetNewPlugin" = "New plugin";
 "EthernetEditPlugin" = "Edit plugin";
 "EthernetPluginName" = "Plugin name";

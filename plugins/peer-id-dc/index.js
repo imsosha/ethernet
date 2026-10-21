@@ -1,6 +1,7 @@
 /**
  * Plugin: Peer ID & DC Viewer
  * Отображает Telegram ID и Data Center (DC) в профиле пользователя, бота или канала.
+ * @permissions dom.style, telegram.store
  */
 
 (function () {

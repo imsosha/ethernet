@@ -318,8 +318,10 @@ const SettingsEthernetPlugins: FC<OwnProps> = ({ isActive, onReset }) => {
     const { picked, inspection, grantedPermissions } = pendingImport;
     const meta = inspection.metadata || {};
     const name = meta.name || picked.name.replace(/\.(eth|js|json)$/i, '');
+    const pluginId = meta.id || picked.name.replace(/\.(eth|js|json)$/i, '');
     try {
       const id = await api.pluginSave({
+        id: pluginId,
         name,
         description: meta.description || `Imported from ${picked.name}`,
         version: meta.version || '1.0.0',
