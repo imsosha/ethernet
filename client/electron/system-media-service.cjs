@@ -4,7 +4,10 @@
  * Specifically ignores internal Telegram/Ethernet sessions.
  */
 
+const { app } = require('electron');
 const { spawn } = require('child_process');
+const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const readline = require('readline');
 
@@ -12,6 +15,8 @@ let psProcess = null;
 let rl = null;
 let isReady = false;
 let isExecuting = false;
+let consecutiveFailures = 0;
+let lastSpawnTime = 0;
 const pendingQueue = [];
 let lastCachedState = {
   active: false,
@@ -25,11 +30,53 @@ let lastCachedState = {
   thumbnail: '',
 };
 
+function resolveScriptPath() {
+  const directPath = path.join(__dirname, 'system-media.ps1');
+
+  // 1. If running in dev mode outside of asar
+  if (!directPath.includes('app.asar') && fs.existsSync(directPath)) {
+    return directPath;
+  }
+
+  // 2. If unpacked by electron-builder via asarUnpack
+  const unpackedPath = directPath.replace('app.asar', 'app.asar.unpacked');
+  if (fs.existsSync(unpackedPath)) {
+    return unpackedPath;
+  }
+
+  // 3. Robust fallback: extract script from asar to userData/temp so powershell.exe can read it
+  try {
+    const targetDir = (app && typeof app.getPath === 'function')
+      ? app.getPath('userData')
+      : (process.env.APPDATA ? path.join(process.env.APPDATA, 'Ethernet') : os.tmpdir());
+
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+
+    const targetPath = path.join(targetDir, 'ethernet-system-media.ps1');
+    const content = fs.readFileSync(directPath, 'utf8');
+    // Ensure UTF-8 BOM so Windows PowerShell 5.1 interprets UTF-8 properly
+    const outContent = content.startsWith('\uFEFF') ? content : ('\uFEFF' + content);
+    fs.writeFileSync(targetPath, outContent, 'utf8');
+    return targetPath;
+  } catch (err) {
+    console.error('[system-media] Failed to resolve script path:', err);
+    return directPath;
+  }
+}
+
 function init() {
   if (process.platform !== 'win32') return;
   if (psProcess) return;
 
-  const scriptPath = path.join(__dirname, 'system-media.ps1');
+  const now = Date.now();
+  if (consecutiveFailures >= 5 && now - lastSpawnTime < 10000) {
+    return;
+  }
+  lastSpawnTime = now;
+
+  const scriptPath = resolveScriptPath();
 
   try {
     psProcess = spawn('powershell.exe', [
@@ -50,6 +97,7 @@ function init() {
       if (!trimmed) return;
       if (trimmed === 'READY') {
         isReady = true;
+        consecutiveFailures = 0;
         pump();
         return;
       }
@@ -76,7 +124,10 @@ function init() {
       console.warn('[system-media] stderr:', err.toString());
     });
 
-    psProcess.on('exit', () => {
+    psProcess.on('exit', (code, signal) => {
+      if (!isReady) {
+        consecutiveFailures++;
+      }
       psProcess = null;
       rl = null;
       isReady = false;

@@ -189,6 +189,9 @@
       "package.json",
       "ethernet.ico"
     ],
+    "asarUnpack": [
+      "electron/system-media.ps1"
+    ],
     "extraResources": [
       {
         "from": "bin",
