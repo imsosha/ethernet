@@ -10,6 +10,7 @@
   background: transparent;
 
   cursor: pointer;
+  pointer-events: auto !important;
   opacity: 0.85;
   color: var(--accent-color, var(--color-primary));
   transition: opacity 0.2s ease, transform 0.2s ease, filter 0.2s ease;

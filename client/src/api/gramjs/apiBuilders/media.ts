@@ -30,21 +30,22 @@ import { buildStickerFromDocument } from './symbols';
 export type ApiPageDocument = ApiSticker | ApiVideo | ApiAudio | ApiDocument;
 
 export function buildApiPageDocument(document: GramJs.TypeDocument): ApiPageDocument | undefined {
-  if (!(document instanceof GramJs.Document)) {
+  if (!(document instanceof GramJs.Document) && (document as any)?.className !== 'Document') {
     return undefined;
   }
 
-  return buildStickerFromDocument(document)
-    || buildApiVideoFromDocument(document)
-    || buildApiAudioFromDocument(document)
-    || buildApiDocument(document);
+  const doc = document as GramJs.Document;
+  return buildStickerFromDocument(doc)
+    || buildApiVideoFromDocument(doc)
+    || buildApiAudioFromDocument(doc)
+    || buildApiDocument(doc);
 }
 
 export function buildApiVideoFromDocument(document: GramJs.Document, altDocuments?: GramJs.TypeDocument[], params?: {
   isSpoiler?: boolean;
   timestamp?: number;
 }): ApiVideo | undefined {
-  if (document instanceof GramJs.DocumentEmpty) {
+  if (document instanceof GramJs.DocumentEmpty || (document as any)?.className === 'DocumentEmpty') {
     return undefined;
   }
 
@@ -61,14 +62,40 @@ export function buildApiVideoFromDocument(document: GramJs.Document, altDocument
   }
 
   const videoAttr = attributes
-    .find((a): a is GramJs.DocumentAttributeVideo => a instanceof GramJs.DocumentAttributeVideo);
+    ?.find((a): a is GramJs.DocumentAttributeVideo => a instanceof GramJs.DocumentAttributeVideo || (a as any)?.className === 'DocumentAttributeVideo');
 
   if (!videoAttr) {
+    const isGif = mimeType === 'image/gif' || attributes?.some((a) => (
+      a instanceof GramJs.DocumentAttributeAnimated || (a as any)?.className === 'DocumentAttributeAnimated'
+    ));
+
+    if (isGif) {
+      const imgSizeAttr = attributes?.find((a): a is GramJs.DocumentAttributeImageSize => (
+        a instanceof GramJs.DocumentAttributeImageSize || (a as any)?.className === 'DocumentAttributeImageSize'
+      ));
+      const previewPhotoSizes = thumbs && buildApiPhotoPreviewSizes(thumbs);
+      return {
+        mediaType: 'video',
+        id: id.toString(),
+        mimeType: mimeType || 'image/gif',
+        duration: 0,
+        fileName: 'animation.gif',
+        width: imgSizeAttr?.w || 320,
+        height: imgSizeAttr?.h || 240,
+        supportsStreaming: true,
+        isGif: true,
+        thumbnail: previewPhotoSizes?.[0],
+        thumbnailSizes: previewPhotoSizes,
+        size,
+        isSpoiler,
+      };
+    }
+
     return undefined;
   }
 
   const gifAttr = attributes
-    .find((a): a is GramJs.DocumentAttributeAnimated => a instanceof GramJs.DocumentAttributeAnimated);
+    ?.find((a): a is GramJs.DocumentAttributeAnimated => a instanceof GramJs.DocumentAttributeAnimated || (a as any)?.className === 'DocumentAttributeAnimated');
 
   const hasVideoPreview = videoThumbs?.some((thumb) => thumb instanceof GramJs.VideoSize && thumb.type === 'v');
   const previewPhotoSizes = thumbs && buildApiPhotoPreviewSizes(thumbs);
@@ -126,15 +153,23 @@ export function buildApiAudioFromDocument(
     return undefined;
   }
 
-  const thumbnailSizes = document.thumbs && document.thumbs
-    .filter((thumb): thumb is GramJs.PhotoSize => thumb instanceof GramJs.PhotoSize)
-    .map((thumb) => buildApiPhotoSize(thumb));
+  const thumbnailSizes = document.thumbs ? buildApiPhotoPreviewSizes(document.thumbs) : undefined;
+
+  const photoSize = document.thumbs && document.thumbs.find((s): s is GramJs.PhotoSize => s instanceof GramJs.PhotoSize);
+  let thumbnail = document.thumbs && buildApiThumbnailFromStripped(document.thumbs);
+  if (!thumbnail && document.thumbs && photoSize) {
+    const photoPath = document.thumbs.find((s): s is GramJs.PhotoPathSize => s instanceof GramJs.PhotoPathSize);
+    if (photoPath) {
+      thumbnail = buildApiThumbnailFromPath(photoPath, photoSize);
+    }
+  }
 
   return {
     mediaType: 'audio',
     id: String(document.id),
     fileName: buildApiDocumentFileName(document, 'audio'),
     thumbnailSizes,
+    thumbnail,
     size: toJSNumber(document.size),
     ...pick(document, ['mimeType']),
     ...pick(audioAttribute, ['duration', 'performer', 'title']),

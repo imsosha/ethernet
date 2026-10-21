@@ -1,8 +1,10 @@
 export type HermesRadii = {
   ui?: number;
+  topbar?: number;
   foldersSidebar?: number;
   messages?: number;
   buttons?: number;
+  input?: number;
   avatars?: number;
 };
 
@@ -27,32 +29,84 @@ export type HermesMod = {
   messageAlignOwn?: 'right' | 'left' | 'center';
   messageAlignOther?: 'left' | 'right' | 'center';
   wallpaperFile?: string;
-  wallpaperKind?: 'image' | 'video';
+  wallpaperKind?: 'image' | 'video' | 'color';
   wallpaperOriginalPath?: string;
   customCss?: string;
+  profileOpenMode?: 'shift' | 'overlay';
+  mediaMessageWidth?: 'standard' | 'wide' | 'full';
+  hideTitlebar?: boolean;
 };
 
 export type EthernetMod = HermesMod;
 export type EthernetRadii = HermesRadii;
 
 export interface HermesDesktopApi {
-  themesList: () => Promise<Array<{ name: string; file: string; size: number; active: boolean }>>;
+  themesList: () => Promise<Array<{
+    name: string;
+    rawName?: string;
+    displayName?: string;
+    version?: string;
+    author?: string;
+    description?: string;
+    icon?: string;
+    pluginsCount?: number;
+    hasPlugins?: boolean;
+    active: boolean;
+  }>>;
   themeRead: (name: string) => Promise<string>;
   themeSave: (name: string, css: string, wallpaperInfo?: any) => Promise<boolean>;
   themeDelete: (name: string) => Promise<boolean>;
   themeActivate: (name: string | null) => Promise<boolean>;
-  pluginsList: () => Promise<Array<{ id: string; name: string; enabled: boolean; description?: string; author?: string; version?: string }>>;
+  pluginsList: () => Promise<Array<{
+    id: string;
+    name: string;
+    enabled: boolean;
+    description?: string;
+    author?: string;
+    version?: string;
+    icon?: string;
+    themeDependency?: string;
+    requiredForTheme?: string;
+    permissions?: string[];
+    grantedPermissions?: Record<string, boolean>;
+    hasDangerousPermissions?: boolean;
+    hasActiveDangerousPermissions?: boolean;
+  }>>;
   pluginRead: (id: string) => Promise<{ manifest: any; code: string }>;
-  pluginSave: (plugin: { id: string; name?: string; description?: string; author?: string; code?: string }) => Promise<boolean>;
+  pluginSave: (plugin: {
+    id?: string;
+    name?: string;
+    description?: string;
+    author?: string;
+    version?: string;
+    code?: string;
+    icon?: string;
+    themeDependency?: string;
+    requiredForTheme?: string;
+    permissions?: string[];
+    grantedPermissions?: Record<string, boolean>;
+    enabled?: boolean;
+  }) => Promise<any>;
   pluginDelete: (id: string) => Promise<boolean>;
   pluginToggle: (id: string) => Promise<boolean>;
+  mediaGetSystemState?: () => Promise<{
+    active: boolean;
+    title?: string;
+    artist?: string;
+    album?: string;
+    app?: string;
+    status?: string;
+    position?: number;
+    duration?: number;
+  }>;
+  mediaControlSystem?: (action: string, value?: any) => Promise<any>;
   pickFile: (kind: string) => Promise<{ name: string; content: string; path?: string } | null>;
   saveFile: (payload: { defaultName?: string; content: string; ext?: string; filterName?: string }) => Promise<boolean>;
   reload: () => Promise<void>;
   modGet: () => Promise<HermesMod | null>;
   modSet: (mod: HermesMod) => Promise<HermesMod>;
-  wallpaperSetFile: (payload: { name: string; base64: string; path?: string; originalPath?: string; themeName?: string }) => Promise<{ slug?: string; file?: string; originalPath?: string }>;
-  wallpaperClear: () => Promise<boolean>;
+  wallpaperSetFile: (payload: { name?: string; base64?: string; file?: string; kind?: string; path?: string; originalPath?: string; themeName?: string }) => Promise<{ slug?: string; file?: string; originalPath?: string }>;
+  wallpaperClear: (themeName?: string) => Promise<boolean>;
   windowMinimize: () => Promise<boolean>;
   windowMaximizeToggle: () => Promise<boolean>;
   windowClose: () => Promise<boolean>;
@@ -71,6 +125,8 @@ export interface HermesDesktopApi {
   onNotificationsDisabledChange?: (cb: (disabled: boolean) => void) => () => void;
   notificationsDisabledGet?: () => Promise<boolean>;
   notificationsDisabledSet?: (disabled: boolean) => Promise<boolean>;
+  nativeNotificationsGet?: () => Promise<boolean>;
+  nativeNotificationsSet?: (enabled: boolean) => Promise<boolean>;
   closeToTrayDisabledGet?: () => Promise<boolean>;
   closeToTrayDisabledSet?: (disabled: boolean) => Promise<boolean>;
   setUnreadCount?: (count: number) => Promise<boolean>;
@@ -116,7 +172,7 @@ export interface HermesLoaderApi {
   applyTheme: (name: string) => Promise<void>;
   clearTheme: () => void;
   applyMod: (mod: HermesMod) => void;
-  wallpaperSet?: (file: string | null, kind?: 'image' | 'video') => void;
+  wallpaperSet?: (file: string | null, kind?: 'image' | 'video' | 'color') => void;
   wallpaperClear?: () => void;
   api: HermesApiHooks;
   store: HermesStoreApi;

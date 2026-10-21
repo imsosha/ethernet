@@ -518,6 +518,7 @@ const Chat: FC<OwnProps & StateProps> = ({
           </div>
           <ChatBadge
             chat={chat}
+            isPinned={isPinned}
             isMuted={isMuted}
             shouldShowOnlyMostImportant
             forceHidden={getIsForumPanelClosed}

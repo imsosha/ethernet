@@ -20,6 +20,8 @@ import {
 } from '../../global/helpers';
 import {
   selectChat,
+  selectCurrentMiddleSearch,
+  selectMiddleSearch,
   selectCustomEmoji,
   selectIsChatWithSelf,
   selectIsInSelectMode,
@@ -36,6 +38,7 @@ import { IS_TAURI } from '../../util/browser/globalEnvironment';
 import { IS_MAC_OS } from '../../util/browser/windowEnvironment';
 import buildClassName from '../../util/buildClassName';
 import { isUserId } from '../../util/entities/ids';
+import { setIsSidebarPinned } from '../../util/sidebarPinned';
 
 import useAppLayout from '../../hooks/useAppLayout';
 import useConnectionStatus from '../../hooks/useConnectionStatus';
@@ -65,6 +68,8 @@ type OwnProps = {
   messageListType: MessageListType;
   isComments?: boolean;
   isMobile?: boolean;
+  hasActiveMiddleSearch?: boolean;
+  hasAudioPlayer?: boolean;
   getCurrentPinnedIndex: Signal<number>;
   getLoadingPinnedId: Signal<number | undefined>;
   onFocusPinnedMessage: (messageId: number) => void;
@@ -86,6 +91,8 @@ type StateProps = {
   isFetchingDifference?: boolean;
   emojiStatusSticker?: ApiSticker;
   emojiStatusSlug?: string;
+  hasActiveMiddleSearch?: boolean;
+  hasAudioPlayer?: boolean;
 };
 
 const MiddleHeader = ({
@@ -111,6 +118,8 @@ const MiddleHeader = ({
   emojiStatusSticker,
   emojiStatusSlug,
   isSavedDialog,
+  hasActiveMiddleSearch,
+  hasAudioPlayer,
   onFocusPinnedMessage,
 }: OwnProps & StateProps) => {
   const {
@@ -146,8 +155,10 @@ const MiddleHeader = ({
     if ((event.target as Element).closest('.title > .custom-emoji')) return;
 
     if (isRightColumnShown) {
+      setIsSidebarPinned(false);
       toggleChatInfo({ force: false });
     } else {
+      setIsSidebarPinned(true);
       // Force close My Profile if clicked on Saved Messages header
       openThreadWithInfo({ chatId, threadId, isOwnProfile: false });
     }
@@ -362,7 +373,11 @@ const MiddleHeader = ({
 
   return (
     <div
-      className="MiddleHeader"
+      className={buildClassName(
+        'MiddleHeader',
+        hasActiveMiddleSearch && 'is-hidden-by-search',
+        hasAudioPlayer && 'has-audio-player',
+      )}
       ref={componentRef}
       data-tauri-drag-region={IS_TAURI && IS_MAC_OS ? true : undefined}
     >
@@ -388,10 +403,10 @@ const MiddleHeader = ({
 
 export default memo(withGlobal<OwnProps>(
   (global, {
-    chatId, threadId, messageListType, isMobile,
+    chatId, threadId, messageListType, isMobile, hasActiveMiddleSearch,
   }): Complete<StateProps> => {
     const {
-      isLeftColumnShown, shouldSkipHistoryAnimations, messageLists,
+      isLeftColumnShown, shouldSkipHistoryAnimations, messageLists, audioPlayer,
     } = selectTabState(global);
     const chat = selectChat(global, chatId);
     const peer = selectPeer(global, chatId);
@@ -431,6 +446,12 @@ export default memo(withGlobal<OwnProps>(
       emojiStatusSticker,
       emojiStatusSlug,
       isSavedDialog,
+      hasActiveMiddleSearch: Boolean(
+        hasActiveMiddleSearch
+        || (chatId && threadId && selectMiddleSearch(global, chatId, threadId))
+        || selectCurrentMiddleSearch(global),
+      ),
+      hasAudioPlayer: Boolean(audioPlayer?.chatId && audioPlayer?.messageId),
     };
   },
 )(MiddleHeader));

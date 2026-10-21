@@ -3,6 +3,7 @@ import { requestMutation } from '../../../lib/fasterdom/fasterdom';
 import useFlag from '../../../hooks/useFlag';
 import useLastCallback from '../../../hooks/useLastCallback';
 import useRunDebounced from '../../../hooks/useRunDebounced';
+import { isAnimatingScroll } from '../../../util/animateScroll';
 
 const DEBOUNCE = 1000;
 
@@ -14,6 +15,16 @@ export default function useStickyDates() {
   const runDebounced = useRunDebounced(DEBOUNCE, true);
 
   const updateStickyDates = useLastCallback((container: HTMLDivElement) => {
+    if (isAnimatingScroll(container)) {
+      return;
+    }
+    if (
+      typeof document !== 'undefined'
+      && (document.body.classList.contains('is-resizing-left-column')
+        || document.body.classList.contains('is-animating-left-column'))
+    ) {
+      return;
+    }
     markIsScrolled();
 
     if (!document.body.classList.contains('is-scrolling-messages')) {

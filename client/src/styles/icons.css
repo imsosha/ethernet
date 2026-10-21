@@ -105,6 +105,9 @@ url("./icons.woff?f60838d786c81538ce7c8f28beb7b57b") format("woff");
 .icon-arrow-right::before {
   content: "\f11c";
 }
+.icon-expand::before {
+  content: "\f11c";
+}
 .icon-article::before {
   content: "\f11d";
 }

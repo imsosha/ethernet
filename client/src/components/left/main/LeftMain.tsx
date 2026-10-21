@@ -13,6 +13,7 @@ import { selectCommunityPanelId } from '../../../global/selectors';
 import { IS_TAURI } from '../../../util/browser/globalEnvironment';
 import { IS_TOUCH_ENV } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
+import { getIsLeftColumnCollapsed, setIsLeftColumnCollapsed } from '../../../util/leftColumnCollapsed';
 
 import useSelector from '../../../hooks/data/useSelector';
 import useInterval from '../../../hooks/schedulers/useInterval';
@@ -20,6 +21,7 @@ import useForumPanelRender from '../../../hooks/useForumPanelRender';
 import useLastCallback from '../../../hooks/useLastCallback';
 import useOldLang from '../../../hooks/useOldLang';
 import useShowTransitionDeprecated from '../../../hooks/useShowTransitionDeprecated';
+import useSyncEffect from '../../../hooks/useSyncEffect';
 
 import Button from '../../ui/Button';
 import Transition from '../../ui/Transition';
@@ -99,6 +101,14 @@ const LeftMain: FC<OwnProps> = ({
   } = useShowTransitionDeprecated(isAppUpdateAvailable || Boolean(tauriUpdate));
 
   const isMouseInsideRef = useRef(false);
+
+  useSyncEffect(() => {
+    if (content !== LeftColumnContent.ChatList) {
+      if (getIsLeftColumnCollapsed()) {
+        setIsLeftColumnCollapsed(false);
+      }
+    }
+  }, [content]);
 
   const handleMouseEnter = useLastCallback(() => {
     if (content !== LeftColumnContent.ChatList) {

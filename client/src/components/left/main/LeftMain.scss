@@ -73,6 +73,35 @@
       }
     }
 
+    :root[data-left-column-collapsed="true"] &,
+    :root.left-column-is-collapsed &,
+    #LeftColumn.is-collapsed & {
+      .tabs-placeholder,
+      .ChatFolderTabList {
+        display: none !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+
+      .ChatFolders-content,
+      &-content,
+      &-content.with-tabs,
+      &.with-tabs {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+
+        > .Transition {
+          margin-top: 0 !important;
+          padding-top: 0 !important;
+        }
+
+        .chat-list {
+          padding-top: 0.25rem !important;
+        }
+      }
+    }
+
     > .Transition {
       overflow: hidden;
       flex: 1;

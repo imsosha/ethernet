@@ -117,6 +117,9 @@ export function getNestedRichText(text: ApiRichText): ApiRichText {
     case 'bankCard':
     case 'mentionName':
     case 'date':
+    case 'diff':
+    case 'button':
+    case 'tonAddress':
       return text.text;
     default:
       return { type: 'empty' };
@@ -199,6 +202,13 @@ function appendPageBlockUsage(block: ApiPageBlock, depth: number, usage: RichMes
     case 'audio':
       usage.mediaCount++;
       appendPageCaptionUsage(block.caption, depth + 1, usage);
+      break;
+    case 'document':
+      usage.mediaCount++;
+      appendPageCaptionUsage(block.caption, depth + 1, usage);
+      break;
+    case 'buttonRow':
+      block.buttons.forEach((btn) => appendRichTextUsage(btn.text, depth + 1, usage));
       break;
     case 'table':
       appendPageTableUsage(block, depth, usage);
@@ -331,12 +341,35 @@ function appendPageBlockPreviewText(block: ApiPageBlock, parts: string[], maxLen
       return appendPageMediaGroupPreviewText(block, parts, maxLength);
     case 'map':
       return appendPageMapPreviewText(block, parts, maxLength);
+    case 'channel':
+      return appendBlockText(parts, block.title, maxLength);
+    case 'audio': {
+      const audioTitle = [block.audio.performer, block.audio.title || block.audio.fileName].filter(Boolean).join(' - ');
+      const captionLength = appendPageCaptionPreviewText(block.caption, parts, maxLength);
+      return audioTitle ? appendBlockText(parts, audioTitle, captionLength) : captionLength;
+    }
+    case 'relatedArticles': {
+      const titleLength = hasRichText(block.title)
+        ? appendBlockText(parts, getRichTextPlainText(block.title), maxLength)
+        : maxLength;
+      return titleLength;
+    }
+    case 'document': {
+      const docTitle = block.document.fileName || 'Document';
+      const captionLength = appendPageCaptionPreviewText(block.caption, parts, maxLength);
+      return docTitle ? appendBlockText(parts, docTitle, captionLength) : captionLength;
+    }
+    case 'buttonRow': {
+      let remaining = maxLength;
+      for (const btn of block.buttons) {
+        remaining = appendRichTextPreviewText(btn.text, parts, remaining);
+        if (remaining !== undefined && remaining <= 0) break;
+      }
+      return remaining;
+    }
     case 'unsupported':
     case 'divider':
     case 'anchor':
-    case 'channel':
-    case 'audio':
-    case 'relatedArticles':
       return maxLength;
   }
 }

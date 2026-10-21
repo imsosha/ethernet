@@ -847,8 +847,26 @@
   background-color: transparent !important;
   box-shadow: none !important;
 
+  &.round,
+  &:has(.RoundVideo) {
+    min-width: 15rem !important;
+    min-height: 15rem !important;
+    position: relative !important;
+
+    > .content-inner,
+    .content-inner {
+      width: 15rem !important;
+      min-width: 15rem !important;
+      max-width: 15rem !important;
+      height: 15rem !important;
+      min-height: 15rem !important;
+      max-height: 15rem !important;
+      flex: 0 0 15rem !important;
+    }
+  }
+
   .content-inner,
-  .media-inner {
+  .media-inner:not(.RoundVideo) {
     background: transparent !important;
     background-color: transparent !important;
     box-shadow: none !important;
@@ -880,11 +898,22 @@
   .with-subheader {
     direction: ltr;
     display: flex;
-    flex-direction: row-reverse;
+    flex-direction: row;
     align-items: flex-start;
 
     > p {
       margin-bottom: 0;
+    }
+
+    .media-inner {
+      order: 1;
+    }
+
+    .message-subheader {
+      order: 2;
+      gap: 0.5rem;
+      margin-left: 0.5rem;
+      margin-right: 0;
     }
 
     .EmbeddedMessage {
@@ -895,18 +924,14 @@
       @media (max-width: 340px) {
         z-index: 1;
         max-width: calc(90vw - 12rem);
-        margin-left: -1rem;
+        margin-left: 0;
       }
-    }
-
-    .message-subheader {
-      gap: 0.5rem;
-      margin-left: 0.5rem;
     }
   }
 
   .message-media-duration {
-    background: var(--pattern-color);
+    background: rgba(0, 0, 0, 0.55) !important;
+    color: #fff !important;
   }
 
   .media-inner {
@@ -1003,8 +1028,18 @@
     .with-subheader {
       flex-direction: row;
 
-      .EmbeddedMessage {
+      .media-inner {
+        order: 2;
+      }
+
+      .message-subheader {
+        order: 1;
+        margin-left: 0;
         margin-right: 0.5rem;
+      }
+
+      .EmbeddedMessage {
+        margin-right: 0;
 
         @media (max-width: 340px) {
           z-index: 1;

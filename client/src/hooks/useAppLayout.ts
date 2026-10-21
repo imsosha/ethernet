@@ -6,6 +6,7 @@ import {
   MOBILE_SCREEN_LANDSCAPE_MAX_WIDTH,
   MOBILE_SCREEN_MAX_WIDTH,
 } from '../config';
+import { IS_ELECTRON, IS_TAURI } from '../util/browser/globalEnvironment';
 import { IS_IOS } from '../util/browser/windowEnvironment';
 import { createCallbackManager } from '../util/callbacks';
 import { updateSizes } from '../util/windowSize';
@@ -26,7 +27,7 @@ export function getIsMobile() {
 }
 
 export function getIsTablet() {
-  return isTablet;
+  return (!IS_ELECTRON && !IS_TAURI) && isTablet;
 }
 
 export function getIsWebAppsFullscreenSupported() {
@@ -35,7 +36,7 @@ export function getIsWebAppsFullscreenSupported() {
 
 function handleMediaQueryChange() {
   isMobile = mediaQueryCache.get('mobile')?.matches || false;
-  isTablet = !isMobile && (mediaQueryCache.get('tablet')?.matches || false);
+  isTablet = (!IS_ELECTRON && !IS_TAURI) && !isMobile && (mediaQueryCache.get('tablet')?.matches || false);
   isLandscape = mediaQueryCache.get('landscape')?.matches || false;
   isTouchScreen = mediaQueryCache.get('touch')?.matches || false;
   updateSizes();

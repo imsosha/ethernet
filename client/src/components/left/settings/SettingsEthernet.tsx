@@ -103,7 +103,8 @@ const SettingsEthernet: FC<OwnProps> = ({ isActive, onReset }) => {
           onClick={openEthernetChannel}
           title="@ethernetgram"
         >
-          ethernet
+          <span className={styles.ethPrefix}>eth</span>
+          <span className={styles.ethSuffix}>ernet</span>
         </button>
       </div>
     </div>

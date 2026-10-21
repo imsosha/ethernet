@@ -22,9 +22,9 @@ const DICTIONARY: Record<string, { ru: string; en: string }> = {
   EthernetThemeChannelDesc: { ru: 'Канал с темами для Ethernet', en: 'Themes channel for Ethernet' },
   EthernetPluginChannel: { ru: '@ethPlugin', en: '@ethPlugin' },
   EthernetPluginChannelDesc: { ru: 'Канал с плагинами для Ethernet', en: 'Plugins channel for Ethernet' },
-  EthernetSafeMode: { ru: 'Безопасный режим', en: 'Safe Mode' },
-  EthernetSafeModeDesc: { ru: 'Отключает все плагины. Включается автоматически при ошибках и сбоях в коде плагинов.', en: 'Disables all plugins. Automatically enabled on plugin errors/crashes.' },
-  EthernetSafeModeActive: { ru: 'Безопасный режим активен — все плагины временно отключены', en: 'Safe Mode active — all plugins are disabled' },
+  EthernetSafeMode: { ru: 'Безопасный режим (Crash Guard)', en: 'Safe Mode (Crash Guard)' },
+  EthernetSafeModeDesc: { ru: 'Приостанавливает выполнение плагинов для защиты интерфейса от сбоев и ошибок в их коде.', en: 'Temporarily suspends plugin execution to prevent UI crashes caused by errors in plugin code.' },
+  EthernetSafeModeActive: { ru: 'Crash Guard активен — выполнение плагинов приостановлено', en: 'Crash Guard active — plugin execution suspended' },
   EthernetImportJsFile: { ru: 'Импортировать файл JS...', en: 'Import JS file...' },
   EthernetNewPlugin: { ru: 'Новый плагин', en: 'New plugin' },
   EthernetEditPlugin: { ru: 'Редактировать плагин', en: 'Edit plugin' },
@@ -55,11 +55,18 @@ const DICTIONARY: Record<string, { ru: string; en: string }> = {
   EthernetSectionBlur: { ru: 'Блюр', en: 'Blur' },
   EthernetSectionWallpaper: { ru: 'Обои', en: 'Wallpaper' },
   EthernetSectionAnimations: { ru: 'Анимации', en: 'Animations' },
+  EthernetSectionChat: { ru: 'Чат', en: 'Chat' },
+  EthernetSectionOther: { ru: 'Другие настройки', en: 'Other settings' },
   EthernetBorderRadius: { ru: 'Радиус скругления', en: 'Corner radius' },
   EthernetRadiusUi: { ru: 'Интерфейс и панели', en: 'Interface & Panels' },
+  EthernetRadiusTopbar: { ru: 'Верхняя панель', en: 'Topbar' },
   EthernetRadiusFoldersSidebar: { ru: 'Боковое меню папок', en: 'Folders sidebar' },
   EthernetRadiusMessages: { ru: 'Сообщения', en: 'Message bubbles' },
-  EthernetRadiusButtons: { ru: 'Кнопки и поля ввода', en: 'Buttons & inputs' },
+  EthernetRadiusButtons: { ru: 'Кнопки', en: 'Buttons' },
+  EthernetRadiusInput: { ru: 'Поле ввода', en: 'Input field' },
+  EthernetWallpaperColor: { ru: 'Цвет', en: 'Color' },
+  EthernetWallpaperColorTitle: { ru: 'Сплошной цвет обоев', en: 'Solid wallpaper color' },
+  EthernetSelectedColor: { ru: 'Выбранный цвет', en: 'Selected color' },
   EthernetRadiusAvatars: { ru: 'Аватарки (%)', en: 'Avatars (%)' },
   EthernetColorBackground: { ru: 'Фон', en: 'Background' },
   EthernetColorBackgroundSecondary: { ru: 'Вторичный фон', en: 'Secondary background' },
@@ -101,12 +108,18 @@ const DICTIONARY: Record<string, { ru: string; en: string }> = {
   EthernetAlignRight: { ru: 'Справа', en: 'Right' },
   EthernetInDevelopment: { ru: 'Раздел находится в разработке', en: 'Section is under development' },
 
+  EthernetNotifications: { ru: 'Уведомления', en: 'Notifications' },
   EthernetDisableAllNotifications: { ru: 'Выключить уведомления', en: 'Disable notifications' },
   EthernetDisableAllNotificationsDesc: { ru: 'Полностью отключает все всплывающие окна, звуки и уведомления о сообщениях и звонках', en: 'Completely disables all popups, sounds and notifications for messages and calls' },
+  EthernetNativeNotifications: { ru: 'Системные уведомления', en: 'Native OS notifications' },
+  EthernetNativeNotificationsDesc: { ru: 'Использовать стандартные системные уведомления ОС вместо встроенных всплывающих окон', en: 'Use standard OS notifications instead of built-in popup windows' },
+  EthernetNativeNotificationsTest: { ru: 'Системные уведомления успешно включены', en: 'Native OS notifications enabled' },
   EthernetDisableCloseToTray: { ru: 'Не сворачивать в трей', en: 'Do not minimize to tray' },
   EthernetDisableCloseToTrayDesc: { ru: 'При нажатии на крестик окно приложения будет полностью закрываться, а не сворачиваться в системный трей', en: 'Clicking the close button (X) will completely quit the application instead of minimizing to tray' },
 
   EthernetOptimization: { ru: 'Оптимизация и производительность', en: 'Optimization & Performance' },
+  EthernetHideTitlebar: { ru: 'Скрыть тайтлбар', en: 'Hide titlebar' },
+  EthernetHideTitlebarDesc: { ru: 'Скрывает верхнюю панель заголовка окна для компактного вида', en: 'Hides the top window titlebar for a clean, compact view' },
   EthernetDisableNftGifts: { ru: 'Отключить рендеринг NFT-подарков', en: 'Disable NFT gifts rendering' },
   EthernetDisableNftGiftsDesc: { ru: 'Снижает нагрузку на процессор и видеокарту на слабых ПК, отключая отрисовку и анимацию NFT-подарков', en: 'Reduces CPU and GPU usage on low-end systems by skipping NFT gift rendering and animations' },
 
@@ -229,6 +242,110 @@ const DICTIONARY: Record<string, { ru: string; en: string }> = {
   EthernetCopyMd: { ru: 'Скопировать .MD', en: 'Copy .MD' },
   EthernetCopied: { ru: 'Скопировано в буфер обмена!', en: 'Copied to clipboard!' },
   EthernetMarkAsRead: { ru: 'Прочитать', en: 'Mark as read' },
+
+  // General Settings without Wallpaper
+  SettingsGeneralDescNoWallpaper: { ru: 'Темы, клавиатура', en: 'Themes, keyboard' },
+
+  // Profile Open Mode
+  EthernetProfileOpenMode: { ru: 'Режим открытия профиля', en: 'Profile opening mode' },
+  EthernetProfileOpenModeShift: { ru: 'Смещение', en: 'Shift' },
+  EthernetProfileOpenModeOverlay: { ru: 'Перекрытие', en: 'Overlay' },
+
+  // Media Messages Width
+  EthernetMediaMessageWidth: { ru: 'Ширина сообщений с медиа', en: 'Media messages width' },
+  EthernetMediaWidthStandard: { ru: 'Стандартный', en: 'Standard' },
+  EthernetMediaWidthWide: { ru: 'Широкий', en: 'Wide' },
+  EthernetMediaWidthFull: { ru: 'На всю ширину', en: 'Full width' },
+
+  // Send Button Color
+  EthernetColorSendButton: { ru: 'Кнопка отправки', en: 'Send button' },
+
+  // Network & GeoCard
+  Checking: { ru: 'Проверка...', en: 'Checking...' },
+  NetworkLocal: { ru: 'Локальная сеть', en: 'Local network' },
+  NetworkLocationDesc: { ru: 'Определение сети...', en: 'Detecting network...' },
+  ProxyInvalidLink: {
+    ru: 'Неверный формат ссылки прокси. Поддерживаются ссылки socks5://, http://, tg://socks?...',
+    en: 'Invalid proxy link format. Supported links: socks5://, http://, tg://socks?...',
+  },
+
+  // Safe Mode & Plugins
+  EthernetSafeModeBlocked: {
+    ru: 'Выполнение плагинов временно остановлено. Отключите безопасный режим, чтобы возобновить работу активных плагинов.',
+    en: 'Plugin execution is paused. Turn off Safe Mode to resume active plugins.',
+  },
+  EthernetDisabledInSafeMode: { ru: 'Отключено в Safe Mode', en: 'Disabled in Safe Mode' },
+  EthernetSafeModePluginCrashed: { ru: 'Плагин вызвал сбой', en: 'Plugin crashed' },
+  EthernetReloadClientPrompt: { ru: 'Перезагрузить клиент сейчас?', en: 'Reload client now?' },
+  EthernetReloadRequired: { ru: 'Требуется для применения изменений', en: 'Required to apply changes' },
+  EthernetActionReload: { ru: 'Перезагрузить', en: 'Reload' },
+  EthernetActionLater: { ru: 'Позже', en: 'Later' },
+
+  // CSS Editor
+  EthernetUnsavedThemeConfirm: {
+    ru: 'У вас есть несохранённые изменения в теме. Сохранить их перед выходом?',
+    en: 'You have unsaved changes in the theme. Save before closing?',
+  },
+  EthernetVariables: { ru: 'Переменные', en: 'Variables' },
+  EthernetInsertVariable: { ru: 'Вставить', en: 'Insert' },
+  EthernetCssPlaceholder: {
+    ru: '/* Пишите сюда любой CSS-код темы */',
+    en: '/* Enter custom theme CSS code here */',
+  },
+  EthernetLines: { ru: 'Строк', en: 'Lines' },
+  EthernetCharacters: { ru: 'Символов', en: 'Characters' },
+  EthernetSaving: { ru: 'Сохранение...', en: 'Saving...' },
+  EthernetSaved: { ru: '✓ Сохранено', en: '✓ Saved' },
+
+  // Plugin Security & Permissions
+  EthernetPluginSettings: { ru: 'Настройки плагина', en: 'Plugin Settings' },
+  EthernetPluginPermissions: { ru: 'Разрешения плагина', en: 'Plugin Permissions' },
+  EthernetPluginPermissionsDesc: {
+    ru: 'Контроль запрашиваемых прав доступа к API и данным Telegram',
+    en: 'Control requested permissions to Telegram APIs and data',
+  },
+  EthernetPluginDangerousWarning: {
+    ru: '⚠️ Внимание: Этот плагин запрашивает доступ к потенциально опасным разрешениям (учетные данные, перехват сообщений или трафика). Предоставляйте права только проверенным плагинам!',
+    en: '⚠️ Warning: This plugin requests potentially dangerous permissions (credentials, messages, or traffic interception). Only grant access to trusted plugins!',
+  },
+  EthernetPluginDangerousBadgeTooltip: {
+    ru: 'Плагин запрашивает потенциально опасные разрешения (учетные данные, перехват сети или сообщений)',
+    en: 'Plugin requests potentially dangerous permissions (credentials, network or message interception)',
+  },
+  EthernetPluginNoPermissions: {
+    ru: 'Плагин не запрашивает специальных разрешений',
+    en: 'Plugin does not request any special permissions',
+  },
+  EthernetImportConfirmTitle: { ru: 'Проверка безопасности плагина', en: 'Plugin Security Review' },
+  EthernetImportConfirmPrompt: {
+    ru: 'Внимательно проверьте запрашиваемые разрешения перед установкой плагина.',
+    en: 'Carefully review requested permissions before installing the plugin.',
+  },
+  EthernetImportBlockedTitle: { ru: 'Импорт заблокирован системой безопасности', en: 'Import Blocked by Security System' },
+  EthernetPermissionDangerous: { ru: 'Опасно', en: 'Dangerous' },
+  EthernetActionSettings: { ru: 'Настройки', en: 'Settings' },
+
+  // Individual permissions
+  EthernetPerm_dom_style: { ru: 'Стилизация интерфейса (CSS)', en: 'Interface Styling (CSS)' },
+  EthernetPermDesc_dom_style: { ru: 'Внедрение кастомных CSS-стилей оформления', en: 'Inject custom CSS styling into the client' },
+  EthernetPerm_ui_toast: { ru: 'Уведомления', en: 'Notifications' },
+  EthernetPermDesc_ui_toast: { ru: 'Показ всплывающих уведомлений пользователю', en: 'Display toast notifications to user' },
+  EthernetPerm_events_keyboard: { ru: 'Горячие клавиши', en: 'Keyboard Shortcuts' },
+  EthernetPermDesc_events_keyboard: { ru: 'Перехват нажатий клавиатуры для горячих клавиш', en: 'Listen for keyboard shortcuts' },
+  EthernetPerm_storage_local: { ru: 'Изолированное хранилище', en: 'Isolated Storage' },
+  EthernetPermDesc_storage_local: { ru: 'Сохранение собственных локальных данных плагина', en: 'Store isolated local key-value data for this plugin' },
+  EthernetPerm_credentials: { ru: 'Учетные данные аккаунта (Credentials)', en: 'Account Credentials' },
+  EthernetPermDesc_credentials: { ru: 'Доступ к токенам сессии, ключам авторизации и номеру телефона Telegram', en: 'Access to session tokens, auth keys, and Telegram phone number' },
+  EthernetPerm_telegram_updates: { ru: 'Перехват входящих событий (Updates)', en: 'Incoming Events Interception (Updates)' },
+  EthernetPermDesc_telegram_updates: { ru: 'Чтение и фильтрация всех входящих сообщений и обновлений в реальном времени', en: 'Read and filter all incoming messages and updates in real-time' },
+  EthernetPerm_network_intercept: { ru: 'Перехват исходящего трафика (Requests)', en: 'Outgoing Traffic Interception (Requests)' },
+  EthernetPermDesc_network_intercept: { ru: 'Модификация или отмена исходящих MTProto запросов (Ghost Mode)', en: 'Modify or block outgoing MTProto requests (Ghost Mode)' },
+  EthernetPerm_telegram_store: { ru: 'Глобальное состояние (Store)', en: 'Global Store Access' },
+  EthernetPermDesc_telegram_store: { ru: 'Чтение внутреннего Redux-хранилища чатов и пользователей', en: 'Read internal Redux store of chats and users' },
+  EthernetPerm_network_raw: { ru: 'Внешние сетевые запросы', en: 'External Network Requests' },
+  EthernetPermDesc_network_raw: { ru: 'Отправка произвольных HTTP/WebSocket запросов во внешнюю сеть', en: 'Send arbitrary HTTP/WebSocket requests to external servers' },
+  EthernetPerm_desktop_ipc: { ru: 'Системные функции Desktop (IPC)', en: 'Desktop System APIs (IPC)' },
+  EthernetPermDesc_desktop_ipc: { ru: 'Прямой доступ к системным API рабочего стола Electron', en: 'Direct access to Electron desktop system APIs' },
 };
 
 export function getEthernetString(lang: LangFn | undefined, key: string): string {

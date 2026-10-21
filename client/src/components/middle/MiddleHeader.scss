@@ -5,29 +5,53 @@
 
   position: absolute;
   z-index: var(--z-middle-header);
-  top: 0;
-  right: var(--middle-panel-inline-padding);
-  left: var(--middle-panel-inline-padding);
+  top: 0.5rem;
+  right: 0;
+  left: 0;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 0;
+  margin-bottom: 0;
 
   display: flex;
   flex-shrink: 0;
   align-items: center;
 
-  width: auto;
-  max-width: none;
+  width: var(--messages-container-width);
+  max-width: calc(100% - 1rem);
+  box-sizing: border-box;
   height: var(--middle-header-height);
-  margin: calc(var(--middle-panel-inline-padding) + var(--middle-header-player-height, 0px)) 0 0;
   padding-top: 0.25rem;
   padding-right: max(0.25rem, env(safe-area-inset-right));
   padding-bottom: 0.25rem;
   padding-left: max(0.25rem, env(safe-area-inset-left));
-  border-radius: 2rem;
+  border-radius: var(--border-radius-topbar, var(--border-radius-ui, 1.5rem));
 
   background: var(--color-background);
   box-shadow: var(--shadow-pane);
 
-  /* stylelint-disable-next-line plugin/no-low-performance-animation-properties */
-  transition: var(--header-transform-transition), margin-top var(--top-stack-transition), right var(--layer-transition);
+  will-change: transform;
+  transform: translate3d(0, var(--middle-header-player-shift-y, 0px), 0);
+  -webkit-font-smoothing: subpixel-antialiased;
+  transition: transform 300ms cubic-bezier(0.16, 1, 0.3, 1), opacity 150ms ease, background-color 0.35s ease;
+
+  &.has-audio-player {
+    --middle-header-player-shift-y: calc(var(--middle-header-height) + var(--middle-header-gap));
+  }
+
+  &.is-hidden-by-search {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
+    transition: opacity 150ms ease, visibility 150ms !important;
+  }
+
+  #MiddleColumn:has(#MiddleSearch.active) &,
+  #MiddleColumn:has(#MiddleSearch[class*="active"]) & {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
+  }
 
   body.no-page-transitions & {
     transition: none !important;
@@ -289,6 +313,11 @@
       &.tiny {
         margin-right: 0.625rem;
       }
+
+      &.active {
+        color: var(--color-primary);
+        opacity: 1;
+      }
     }
 
     .toggle-right-pane-button {
@@ -334,13 +363,7 @@
     }
   }
 
-  @media (min-width: 1276px) {
-    width: auto;
 
-    #Main.right-column-open & {
-      transform: none;
-    }
-  }
 
   @media (max-width: 600px) {
     padding-right: max(0.5rem, env(safe-area-inset-right));

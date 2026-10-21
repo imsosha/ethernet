@@ -135,9 +135,11 @@ const FoldersSidebar = ({
       const activeEl = tabsEl.children[activeChatFolder] as HTMLElement | undefined;
       if (!activeEl || activeEl === pillRef.current) return;
 
-      const slotHeight = activeEl.offsetHeight || 44;
-      const circleSize = 36;
-      const top = activeEl.offsetTop + (slotHeight - circleSize) / 2;
+      const iconWrapper = (activeEl.querySelector<HTMLElement>('[class*="iconWrapper"]')
+        || activeEl.firstElementChild) as HTMLElement | undefined;
+      const top = iconWrapper
+        ? activeEl.offsetTop + iconWrapper.offsetTop
+        : activeEl.offsetTop + (activeEl.offsetHeight - (pillRef.current?.offsetHeight || 44)) / 2;
 
       requestMutation(() => {
         tabsEl.style.setProperty('--pill-offset', `${top}px`);

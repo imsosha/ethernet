@@ -88,9 +88,7 @@ export function buildMessageContent(
     };
   }
 
-  const hasUnsupportedMedia = mtpMessage.media instanceof GramJs.MessageMediaUnsupported;
-
-  if (!richMessage && mtpMessage.message && !hasUnsupportedMedia
+  if (!richMessage && mtpMessage.message
     && !content.sticker && !content.todo && !content.contact && !content.video?.isRound) {
     const text = buildMessageTextContent(mtpMessage.message, mtpMessage.entities);
     const textWithTimestamps = addTimestampEntities(text);
@@ -107,20 +105,20 @@ export function buildApiRichMessage(
   richMessage: GramJs.RichMessage,
   context?: MediaRepairContext,
 ): ApiRichMessage | undefined {
-  if (!(richMessage instanceof GramJs.RichMessage)) {
+  if (!(richMessage instanceof GramJs.RichMessage) && (richMessage as any)?.className !== 'RichMessage') {
     return undefined;
   }
 
   const {
     blocks, photos, documents, rtl, part,
   } = richMessage;
-  const pageMediaContext = buildApiPageMediaContext(photos, documents, { message: context });
+  const pageMediaContext = buildApiPageMediaContext(photos || [], documents || [], { message: context });
 
   return {
-    blocks: blocks.map((block) => buildApiPageBlock(block, pageMediaContext)),
+    blocks: (blocks || []).map((block) => buildApiPageBlock(block, pageMediaContext)),
     isRtl: rtl,
     isPart: part,
-    partCutoff: part ? blocks.length : undefined,
+    partCutoff: part ? (blocks?.length || 0) : undefined,
   };
 }
 
@@ -165,7 +163,13 @@ export function buildMessageMediaContent(
   const voice = buildVoice(media);
   if (voice) return { voice, ttlSeconds };
 
-  if ('round' in media && media.round) {
+  const isRound = ('round' in media && media.round) || (
+    media instanceof GramJs.MessageMediaDocument
+    && media.document instanceof GramJs.Document
+    && media.document.attributes?.some((a) => a instanceof GramJs.DocumentAttributeVideo && a.roundMessage)
+  );
+
+  if (isRound) {
     const video = buildVideo(media);
     if (video) return { video, ttlSeconds };
   }
@@ -268,8 +272,16 @@ function buildVideo(media: GramJs.TypeMessageMedia): ApiVideo | undefined {
   if (
     !(media instanceof GramJs.MessageMediaDocument)
     || !(media.document instanceof GramJs.Document)
-    || !media.document.mimeType.startsWith('video')
   ) {
+    return undefined;
+  }
+
+  const isVideoMime = media.document.mimeType.startsWith('video');
+  const hasVideoAttribute = media.document.attributes?.some(
+    (attr) => attr instanceof GramJs.DocumentAttributeVideo,
+  );
+
+  if (!isVideoMime && !hasVideoAttribute) {
     return undefined;
   }
 

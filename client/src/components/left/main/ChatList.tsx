@@ -9,10 +9,12 @@ import {
   ALL_FOLDER_ID,
   ARCHIVE_MINIMIZED_HEIGHT,
   ARCHIVED_FOLDER_ID,
+  CHAT_COLLAPSED_HEIGHT_PX,
   CHAT_HEIGHT_PX,
   CHAT_LIST_SLICE,
   SAVED_FOLDER_ID,
 } from '../../../config';
+import { useIsLeftColumnCollapsed } from '../../../util/leftColumnCollapsed';
 import { IS_APP, IS_MAC_OS } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
 import { onDragEnter, onDragLeave } from '../../../util/dragNDropHandlers';
@@ -102,9 +104,12 @@ const ChatList = ({
   const orderedIds = useFolderManagerForOrderedIds(resolvedFolderId);
   usePeerStoriesPolling(orderedIds);
 
-  const chatsHeight = (orderedIds?.length || 0) * CHAT_HEIGHT_PX;
+  const isLeftColumnCollapsed = useIsLeftColumnCollapsed();
+  const currentChatHeight = isLeftColumnCollapsed ? CHAT_COLLAPSED_HEIGHT_PX : CHAT_HEIGHT_PX;
+
+  const chatsHeight = (orderedIds?.length || 0) * currentChatHeight;
   const archiveHeight = shouldDisplayArchive
-    ? archiveSettings?.isMinimized ? ARCHIVE_MINIMIZED_HEIGHT : CHAT_HEIGHT_PX : 0;
+    ? archiveSettings?.isMinimized ? ARCHIVE_MINIMIZED_HEIGHT : currentChatHeight : 0;
 
   const {
     orderDiffById, shiftDiff, getAnimationType, onReorderAnimationEnd: onReorderAnimationEnd,
@@ -211,7 +216,7 @@ const ChatList = ({
       const isPinned = viewportOffset + i < pinnedCount;
       const offsetTop = noAbsolutePositioning
         ? undefined
-        : panesHeight + archiveHeight + (viewportOffset + i) * CHAT_HEIGHT_PX;
+        : panesHeight + archiveHeight + (viewportOffset + i) * currentChatHeight;
 
       return (
         <Chat

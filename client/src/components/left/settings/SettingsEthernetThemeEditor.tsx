@@ -13,6 +13,8 @@ import Button from '../../ui/Button';
 import Checkbox from '../../ui/Checkbox';
 import Icon from '../../common/icons/Icon';
 import RangeSlider from '../../ui/RangeSlider';
+import Island, { IslandTitle } from '../../gili/layout/Island';
+import ListItem from '../../ui/ListItem';
 import { modToCss, cssToMod } from '../../../util/ethernetThemeUtils';
 import ThemeCssEditorModal from './ThemeCssEditorModal';
 
@@ -33,18 +35,11 @@ const COLOR_VARS: { key: string; langKey: string }[] = [
   { key: '--color-links', langKey: 'EthernetColorLinks' },
   { key: '--color-text-secondary', langKey: 'EthernetColorTextSecondary' },
   { key: '--color-primary', langKey: 'EthernetColorPrimary' },
+  { key: '--color-send-button', langKey: 'EthernetColorSendButton' },
   { key: '--color-icon-buttons', langKey: 'EthernetColorIconButtons' },
   { key: '--color-text-meta-colored', langKey: 'EthernetColorTextMetaColored' },
   { key: '--color-background-own', langKey: 'EthernetColorBackgroundOwn' },
   { key: '--color-chat-active', langKey: 'EthernetColorChatActive' },
-];
-
-const ANIMATION_PRESETS: { label: string; duration: number; curve: string }[] = [
-  { label: 'Telegram', duration: 300, curve: '0.33, 1, 0.68, 1' },
-  { label: 'Snappy', duration: 150, curve: '0.22, 1, 0.36, 1' },
-  { label: 'Smooth', duration: 500, curve: '0.65, 0, 0.35, 1' },
-  { label: 'Bouncy', duration: 400, curve: '0.34, 1.56, 0.64, 1' },
-  { label: 'iOS', duration: 350, curve: '0.25, 0.1, 0.25, 1' },
 ];
 
 export const ETH_DEFAULT_COLORS: Record<string, string> = {
@@ -59,6 +54,7 @@ export const ETH_DEFAULT_COLORS: Record<string, string> = {
   '--color-links': '#58a6ff',
   '--color-text-secondary': '#9da7b7',
   '--color-primary': '#3b82f6',
+  '--color-send-button': '#3b82f6',
   '--color-icon-buttons': '#9da7b7',
   '--color-text-meta-colored': '#58a6ff',
   '--color-background-own': '#1e3a5f',
@@ -69,7 +65,10 @@ const DEFAULT_MOD: EthernetMod = {
   colors: { ...ETH_DEFAULT_COLORS },
   radii: {
     ui: 16,
+    topbar: 24,
+    foldersSidebar: 24,
     messages: 16,
+    input: 24,
     buttons: 12,
     avatars: 50,
   },
@@ -81,6 +80,8 @@ const DEFAULT_MOD: EthernetMod = {
   animationCurve: '0.03, 0.97, 0.19, 0.99',
   animationsDisabled: false,
   chatWidth: 'wide',
+  profileOpenMode: 'shift',
+  mediaMessageWidth: 'full',
 };
 
 // --- Вспомогательные функции для цвета ---
@@ -199,6 +200,7 @@ const CustomColorPicker: FC<{
     const [r, g, b] = hexToRgb(hex);
     return rgbToHsv(r, g, b);
   });
+  const [hexInputText, setHexInputText] = useState<string | null>(null);
 
   const hsvRef = useRef(hsv);
   hsvRef.current = hsv;
@@ -292,7 +294,7 @@ const CustomColorPicker: FC<{
         />
       </div>
 
-      {/* Hue Slider + Eyedropper */}
+      {/* Hue Slider + Eyedropper + Inline HEX Field */}
       <div className="hue-bar-row">
         <input
           type="range"
@@ -312,6 +314,29 @@ const CustomColorPicker: FC<{
             <Icon name="colorize" />
           </button>
         )}
+        <div className="color-hex-field">
+          <span className="color-hex-hash">#</span>
+          <input
+            type="text"
+            value={hexInputText !== null ? hexInputText : hex.replace(/^#/, '')}
+            placeholder="000000"
+            maxLength={6}
+            onFocus={() => setHexInputText(hex.replace(/^#/, ''))}
+            onBlur={() => {
+              if (hexInputText !== null && (hexInputText.length === 6 || hexInputText.length === 3)) {
+                onChange(`#${hexInputText}`);
+              }
+              setHexInputText(null);
+            }}
+            onChange={(e) => {
+              const v = e.currentTarget.value.replace(/[^0-9a-fA-F]/g, '').slice(0, 6);
+              setHexInputText(v);
+              if (v.length === 6 || v.length === 3) {
+                onChange(`#${v}`);
+              }
+            }}
+          />
+        </div>
       </div>
 
       {/* RGB слайдеры */}
@@ -357,86 +382,155 @@ const CustomColorPicker: FC<{
   );
 };
 
-// Строка цвета: свотч + hex-кнопка (раскрывается при наведении) + дропдаун пикера
-const ColorRow: FC<{
-  label: string;
-  cssKey: string;
-  value?: string;
-  onChange: (hex: string) => void;
-}> = ({ label, cssKey, value, onChange }) => {
-  const lang = useLang();
-  const [isPickerOpen, setIsPickerOpen] = useState(false);
-  const [isHexOpen, setIsHexOpen] = useState(false);
-  const inputRef = useRef<HTMLInputElement>();
+function createSolidColorPngBase64(hex: string): string {
+  if (typeof document === 'undefined') return '';
+  const canvas = document.createElement('canvas');
+  canvas.width = 16;
+  canvas.height = 16;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.fillStyle = hex;
+    ctx.fillRect(0, 0, 16, 16);
+    return canvas.toDataURL('image/png');
+  }
+  return '';
+}
 
-  const displayHex = value || getComputedColorHex(cssKey);
+// Редактор всех 12 цветов (не гармошка) с выпадающим списком и вечнооткрытым RGB-пикером
+const ThemeColorsEditor: FC<{
+  colors?: Record<string, string>;
+  onChange: (patch: Record<string, string>) => void;
+}> = ({ colors, onChange }) => {
+  const lang = useLang();
+  const [selectedKey, setSelectedKey] = useState<string>('--color-primary');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>();
+
+  useEffect(() => {
+    if (!isDropdownOpen) return undefined;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDropdownOpen]);
+
+  const currentColorHex = colors?.[selectedKey] || getComputedColorHex(selectedKey, ETH_DEFAULT_COLORS[selectedKey] || '#3b82f6');
+  const selectedItem = COLOR_VARS.find((c) => c.key === selectedKey) || COLOR_VARS[6];
+
+  const handleColorChange = (newHex: string) => {
+    onChange({ [selectedKey]: newHex });
+  };
 
   return (
-    <div className="color-row">
-      <div className="color-row-head">
-        {/* Кругляшок цвета */}
+    <div className="theme-editor-card">
+      {/* Выпадающий список выбора цвета */}
+      <div className="color-picker-select-wrapper" ref={dropdownRef}>
         <button
           type="button"
-          className="color-preview"
-          style={`background-color: ${displayHex || 'transparent'}`}
-          onClick={() => setIsPickerOpen(!isPickerOpen)}
-          title={label}
-        />
-
-        {/* Название */}
-        <span className="color-label" onClick={() => setIsPickerOpen(!isPickerOpen)}>{label}</span>
-
-        {/* Раскрывающийся по наведению блок HEX */}
-        <div
-          className="color-hex-wrapper"
-          onMouseEnter={() => setIsHexOpen(true)}
-          onMouseLeave={() => {
-            if (document.activeElement !== inputRef.current) {
-              setIsHexOpen(false);
-            }
-          }}
+          className="color-picker-select-btn"
+          onClick={() => setIsDropdownOpen(!isDropdownOpen)}
         >
-          {isHexOpen ? (
-            <div className="color-hex-input-box">
-              <span className="color-hex-hash">#</span>
-              <input
-                ref={inputRef}
-                type="text"
-                className="color-hex-input"
-                value={(displayHex || '').replace(/^#/, '')}
-                placeholder="000000"
-                maxLength={6}
-                autoFocus
-                onBlur={() => setIsHexOpen(false)}
-                onChange={(e) => {
-                  const v = e.currentTarget.value.replace(/[^0-9a-fA-F]/g, '');
-                  onChange(v ? `#${v}` : '');
-                }}
-              />
-            </div>
-          ) : (
+          <span
+            className="color-selected-swatch"
+            style={`background-color: ${currentColorHex}`}
+          />
+          <span className="color-selected-title">{getEthernetString(lang, selectedItem.langKey)}</span>
+          <span className={`color-select-chevron ${isDropdownOpen ? 'open' : ''}`}>▾</span>
+        </button>
+
+        {isDropdownOpen && (
+          <div className="color-picker-dropdown-list custom-scroll">
+            {COLOR_VARS.map((c) => {
+              const hexVal = colors?.[c.key] || getComputedColorHex(c.key, ETH_DEFAULT_COLORS[c.key] || '#3b82f6');
+              const isSelected = c.key === selectedKey;
+              return (
+                <button
+                  type="button"
+                  key={c.key}
+                  className={buildClassName('color-picker-dropdown-item', isSelected && 'active')}
+                  onClick={() => {
+                    setSelectedKey(c.key);
+                    setIsDropdownOpen(false);
+                  }}
+                >
+                  <span
+                    className="color-item-swatch"
+                    style={`background-color: ${hexVal}`}
+                  />
+                  <span className="color-item-title">{getEthernetString(lang, c.langKey)}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Быстрые чипы всех 12 цветов для мгновенного переключения в 1 клик */}
+      <div className="color-chips-grid">
+        {COLOR_VARS.map((c) => {
+          const hexVal = colors?.[c.key] || getComputedColorHex(c.key, ETH_DEFAULT_COLORS[c.key] || '#3b82f6');
+          const isSelected = c.key === selectedKey;
+          return (
             <button
               type="button"
-              className="color-hex-button"
-              onClick={() => setIsHexOpen(true)}
-              title="HEX"
-            >
-              <span className="color-hex-button-text">#</span>
-            </button>
-          )}
-        </div>
+              key={c.key}
+              className={buildClassName('color-chip', isSelected && 'active')}
+              style={`background-color: ${hexVal}`}
+              onClick={() => setSelectedKey(c.key)}
+              title={`${getEthernetString(lang, c.langKey)}: ${hexVal}`}
+            />
+          );
+        })}
       </div>
-      {isPickerOpen && (
-        <div className="color-picker-dropdown">
-          <CustomColorPicker
-            hex={displayHex || '#000000'}
-            onChange={onChange}
-          />
-        </div>
-      )}
+
+      {/* Вечнооткрытый RGB / HSV пикер для выбранного цвета (с инлайн HEX полем) */}
+      <CustomColorPicker
+        hex={currentColorHex}
+        onChange={handleColorChange}
+      />
     </div>
   );
 };
+
+function applyLiveRadii(radii: EthernetRadii) {
+  const rUi = radii.ui ?? 16;
+  const rTop = radii.topbar ?? (rUi + 8);
+  const rFs = radii.foldersSidebar ?? (rUi + 8);
+  const rMsg = radii.messages ?? 16;
+  const rBtn = radii.buttons ?? 12;
+  const rInp = radii.input ?? 24;
+  const rAv = radii.avatars ?? 50;
+  const s = document.documentElement.style;
+
+  s.setProperty('--border-radius-island', `${(rUi + 8) / 16}rem`, 'important');
+  s.setProperty('--border-radius-modal', `${(rUi + 16) / 16}rem`, 'important');
+  s.setProperty('--border-radius-default', `${rUi / 16}rem`, 'important');
+  s.setProperty('--border-radius-pane', `${(rUi + 8) / 16}rem`, 'important');
+  s.setProperty('--border-radius-ui', `${rUi}px`, 'important');
+
+  s.setProperty('--border-radius-topbar', `${rTop}px`, 'important');
+  s.setProperty('--border-radius-folders-sidebar', `${rFs / 16}rem`, 'important');
+
+  s.setProperty('--border-radius-messages', `${rMsg / 16}rem`, 'important');
+  s.setProperty('--border-radius-messages-small', `${Math.max(2, rMsg - 8) / 16}rem`, 'important');
+
+  s.setProperty('--border-radius-button', `${rBtn / 16}rem`, 'important');
+  s.setProperty('--border-radius-buttons', `${rBtn}px`, 'important');
+  s.setProperty('--border-radius-default-small', `${Math.max(2, rBtn - 4) / 16}rem`, 'important');
+  s.setProperty('--border-radius-default-tiny', `${Math.max(2, rBtn - 8) / 16}rem`, 'important');
+
+  s.setProperty('--border-radius-input', `${rInp}px`, 'important');
+  s.setProperty('--composer-pill-radius', `${rInp}px`, 'important');
+  s.setProperty('--composer-control-radius', `${rBtn}px`, 'important');
+
+  s.setProperty('--avatar-radius', `${rAv}%`, 'important');
+  s.setProperty('--border-radius-avatars', `${rAv}%`, 'important');
+}
 
 // --- Главный компонент Редактора Темы ---
 const SettingsEthernetThemeEditor: FC<OwnProps> = ({ isActive, onReset }) => {
@@ -485,18 +579,36 @@ const SettingsEthernetThemeEditor: FC<OwnProps> = ({ isActive, onReset }) => {
       }
     }
 
+    const mergedRadii: EthernetRadii = {
+      ...DEFAULT_MOD.radii,
+      ...(themeParsedMod.radii || {}),
+      ...(saved.radii || {}),
+    };
+
     const nextMod: EthernetMod = {
       ...DEFAULT_MOD,
       ...themeParsedMod,
       ...saved,
       colors: mergedColors,
+      radii: mergedRadii,
       chatWidth: saved.chatWidth || themeParsedMod.chatWidth || 'wide',
+      profileOpenMode: saved.profileOpenMode || themeParsedMod.profileOpenMode || 'shift',
+      mediaMessageWidth: saved.mediaMessageWidth || themeParsedMod.mediaMessageWidth || 'full',
+      hideTitlebar: saved.hideTitlebar !== undefined ? saved.hideTitlebar : (themeParsedMod.hideTitlebar || false),
     };
 
     document.documentElement.setAttribute('data-chat-width', nextMod.chatWidth || 'wide');
+    document.documentElement.setAttribute('data-profile-mode', nextMod.profileOpenMode || 'shift');
+    document.documentElement.setAttribute('data-media-width', nextMod.mediaMessageWidth || 'full');
+    document.documentElement.setAttribute('data-hide-titlebar', String(Boolean(nextMod.hideTitlebar)));
+    applyLiveRadii(mergedRadii);
     setMod(nextMod);
+    if (nextMod.wallpaperFile && (nextMod.wallpaperFile.startsWith('#') || nextMod.wallpaperFile.startsWith('rgb'))) {
+      setWallpaperSolidColor(nextMod.wallpaperFile);
+      setIsWallpaperColorOpen(true);
+    }
 
-    fetch('/ethernet/wallpaper.json')
+    fetch(`/ethernet/wallpaper.json?theme=${encodeURIComponent(currentActiveName || '')}`)
       .then((r) => r.json())
       .then((info) => {
         if (info && (info.file || info.slug)) {
@@ -508,6 +620,13 @@ const SettingsEthernetThemeEditor: FC<OwnProps> = ({ isActive, onReset }) => {
               wallpaperKind: info.kind || (/\.(mp4|webm)$/i.test(info.file) ? 'video' : 'image'),
             }));
           }
+          if (info.file && (info.file.startsWith('#') || info.file.startsWith('rgb'))) {
+            setWallpaperSolidColor(info.file);
+            setIsWallpaperColorOpen(true);
+          }
+        } else {
+          setWallpaperInfo({ slug: null, file: null });
+          setIsWallpaperColorOpen(false);
         }
       })
       .catch(() => {});
@@ -518,34 +637,6 @@ const SettingsEthernetThemeEditor: FC<OwnProps> = ({ isActive, onReset }) => {
       loadThemeData();
     }
   }, [isActive, loadThemeData]);
-
-function applyLiveRadii(radii: EthernetRadii) {
-  const rUi = radii.ui ?? 16;
-  const rFs = radii.foldersSidebar ?? (rUi + 8);
-  const rMsg = radii.messages ?? 16;
-  const rBtn = radii.buttons ?? 12;
-  const rAv = radii.avatars ?? 50;
-  const s = document.documentElement.style;
-
-  s.setProperty('--border-radius-island', `${(rUi + 8) / 16}rem`, 'important');
-  s.setProperty('--border-radius-modal', `${(rUi + 16) / 16}rem`, 'important');
-  s.setProperty('--border-radius-default', `${rUi / 16}rem`, 'important');
-  s.setProperty('--border-radius-pane', `${(rUi + 8) / 16}rem`, 'important');
-  s.setProperty('--border-radius-ui', `${rUi}px`, 'important');
-
-  s.setProperty('--border-radius-folders-sidebar', `${rFs / 16}rem`, 'important');
-
-  s.setProperty('--border-radius-messages', `${rMsg / 16}rem`, 'important');
-  s.setProperty('--border-radius-messages-small', `${Math.max(2, rMsg - 8) / 16}rem`, 'important');
-
-  s.setProperty('--border-radius-button', `${rBtn / 16}rem`, 'important');
-  s.setProperty('--border-radius-buttons', `${rBtn}px`, 'important');
-  s.setProperty('--border-radius-default-small', `${Math.max(2, rBtn - 4) / 16}rem`, 'important');
-  s.setProperty('--border-radius-default-tiny', `${Math.max(2, rBtn - 8) / 16}rem`, 'important');
-
-  s.setProperty('--avatar-radius', `${rAv}%`, 'important');
-  s.setProperty('--border-radius-avatars', `${rAv}%`, 'important');
-}
 
   // Живое сохранение и применение мода в моменте
   const update = useLastCallback(async (patch: Partial<EthernetMod>, replaceColors = false) => {
@@ -563,8 +654,28 @@ function applyLiveRadii(radii: EthernetRadii) {
       if (patch.blurTargets) {
         next.blurTargets = { ...(prev.blurTargets || {}), ...patch.blurTargets };
       }
+      if ('wallpaperFile' in patch) {
+        if (!patch.wallpaperFile) {
+          delete next.wallpaperFile;
+          delete next.wallpaperKind;
+          delete next.wallpaperOriginalPath;
+        } else {
+          next.wallpaperFile = patch.wallpaperFile;
+          next.wallpaperKind = patch.wallpaperKind;
+          next.wallpaperOriginalPath = patch.wallpaperOriginalPath;
+        }
+      }
       if (patch.chatWidth) {
         document.documentElement.setAttribute('data-chat-width', patch.chatWidth);
+      }
+      if (patch.profileOpenMode) {
+        document.documentElement.setAttribute('data-profile-mode', patch.profileOpenMode);
+      }
+      if (patch.mediaMessageWidth) {
+        document.documentElement.setAttribute('data-media-width', patch.mediaMessageWidth);
+      }
+      if (patch.hideTitlebar !== undefined) {
+        document.documentElement.setAttribute('data-hide-titlebar', String(patch.hideTitlebar));
       }
 
       if (next.radii) {
@@ -575,6 +686,12 @@ function applyLiveRadii(radii: EthernetRadii) {
         for (const [k, v] of Object.entries(patch.colors)) {
           if (v) {
             document.documentElement.style.setProperty(k, v, 'important');
+            if (k === '--color-background') {
+              document.documentElement.style.setProperty('--theme-background-color', v, 'important');
+              if (document.body) {
+                document.body.style.setProperty('--theme-background-color', v, 'important');
+              }
+            }
             if (k === '--color-primary' && /^#[0-9a-fA-F]{6}$/.test(v)) {
               const r = parseInt(v.slice(1, 3), 16);
               const g = parseInt(v.slice(3, 5), 16);
@@ -609,12 +726,13 @@ function applyLiveRadii(radii: EthernetRadii) {
       // Если активна именованная сохраненная тема — обновляем ее файл
       if (themeName && themeName !== 'default' && desktopApi) {
         const css = modToCss(next, themeName, next.customCss);
-        const wpFile = next.wallpaperFile || wallpaperInfo?.file;
+        const wpFile = 'wallpaperFile' in patch ? patch.wallpaperFile : next.wallpaperFile;
+        const isColor = typeof wpFile === 'string' && (wpFile.startsWith('#') || wpFile.startsWith('rgb'));
         const wpInfo = (wpFile) ? {
           file: wpFile,
-          kind: next.wallpaperKind || (wpFile && /\.(mp4|webm)$/i.test(wpFile) ? 'video' : 'image'),
-          slug: wallpaperInfo?.slug || wpFile.replace(/\.[^.]+$/, ''),
-          originalPath: wallpaperInfo?.originalPath,
+          kind: isColor ? 'color' : (next.wallpaperKind || (wpFile && /\.(mp4|webm)$/i.test(wpFile) ? 'video' : 'image')),
+          slug: isColor ? 'color' : (wallpaperInfo?.slug || wpFile.replace(/\.[^.]+$/, '')),
+          originalPath: wallpaperInfo?.originalPath || (isColor ? wpFile : undefined),
         } : undefined;
         desktopApi.themeSave(themeName, css, wpInfo);
         desktopApi.themeActivate(themeName);
@@ -632,12 +750,17 @@ function applyLiveRadii(radii: EthernetRadii) {
     });
   });
 
+  const [isWallpaperColorOpen, setIsWallpaperColorOpen] = useState(false);
+  const [wallpaperSolidColor, setWallpaperSolidColor] = useState<string>('#16171a');
+
   const updateRadius = useLastCallback((key: keyof EthernetRadii, val: number) => {
     const currentRadii = mod.radii || {
       ui: 16,
+      topbar: 24,
       foldersSidebar: 24,
       messages: 16,
       buttons: 12,
+      input: 24,
       avatars: 50,
     };
     const nextRadii = {
@@ -657,7 +780,7 @@ function applyLiveRadii(radii: EthernetRadii) {
     try {
       const picked = await desktopApi.pickFile('wallpaper');
       if (!picked) return;
-      const activeName = themeName || 'Кастомная';
+      const activeName = themeName || 'default';
       const res = await desktopApi.wallpaperSetFile({
         name: picked.name,
         path: picked.path,
@@ -672,6 +795,7 @@ function applyLiveRadii(radii: EthernetRadii) {
         file: filename,
         originalPath: res?.originalPath || picked.path || picked.name,
       });
+      setIsWallpaperColorOpen(false);
       update({ wallpaperFile: filename, wallpaperKind: isVideo ? 'video' : 'image' });
       const loaderApi = window.ethernet || window.hermes;
       if (loaderApi?.wallpaperSet) {
@@ -682,13 +806,39 @@ function applyLiveRadii(radii: EthernetRadii) {
     }
   });
 
-  const handleWallpaperClear = useLastCallback(async () => {
+  const handleWallpaperColorChange = useLastCallback(async (hex: string) => {
+    setWallpaperSolidColor(hex);
+    setWallpaperInfo({ slug: 'color', file: hex, originalPath: hex });
+    update({ wallpaperFile: hex, wallpaperKind: 'color' });
+    const loaderApi = window.ethernet || window.hermes;
+    if (loaderApi?.wallpaperSet) {
+      loaderApi.wallpaperSet(hex, 'color');
+    }
     const desktopApi = window.ethernetDesktop || window.hermesDesktop;
     if (desktopApi) {
-      await desktopApi.wallpaperClear();
+      try {
+        const activeName = themeName || 'default';
+        desktopApi.wallpaperSetFile({
+          file: hex,
+          kind: 'color',
+          originalPath: hex,
+          themeName: activeName,
+        });
+      } catch (err) {
+        console.error('[SettingsEthernetThemeEditor] Wallpaper color set error:', err);
+      }
     }
-    setWallpaperInfo({ slug: null, file: null });
-    update({ wallpaperFile: undefined, wallpaperKind: undefined });
+  });
+
+  const handleWallpaperClear = useLastCallback(async () => {
+    const desktopApi = window.ethernetDesktop || window.hermesDesktop;
+    const activeName = themeName || 'default';
+    if (desktopApi) {
+      await desktopApi.wallpaperClear(activeName);
+    }
+    setWallpaperInfo({ slug: null, file: null, originalPath: undefined });
+    setIsWallpaperColorOpen(false);
+    update({ wallpaperFile: null as any, wallpaperKind: null as any, wallpaperOriginalPath: undefined });
     const loaderApi = window.ethernet || window.hermes;
     if (loaderApi?.wallpaperClear) {
       loaderApi.wallpaperClear();
@@ -722,101 +872,181 @@ function applyLiveRadii(radii: EthernetRadii) {
 
   const radii = mod.radii || {
     ui: mod.borderRadius ?? 16,
+    topbar: (mod.borderRadius ?? 16) + 8,
+    foldersSidebar: (mod.borderRadius ?? 16) + 8,
     messages: mod.borderRadius ?? 16,
     buttons: mod.borderRadius ? Math.max(2, mod.borderRadius - 4) : 12,
+    input: 24,
     avatars: 50,
   };
 
   return (
     <div className="settings-content custom-scroll theme-editor">
-      <div className="theme-editor-top-actions">
-        <Button
-          className="theme-editor-css-btn"
-          color="translucent"
-          size="smaller"
+      {/* 1. Кнопка "Редактировать CSS-код" в обычном стиле острова */}
+      <Island className="theme-editor-island-btn">
+        <ListItem
+          icon="edit"
+          ripple
+          narrow
           onClick={handleOpenCssEditor}
         >
-          <Icon name="edit" />
-          <span>{getEthernetString(lang, 'EthernetEditCssCode')}</span>
-        </Button>
+          <span className="title">{getEthernetString(lang, 'EthernetEditCssCode')}</span>
+        </ListItem>
+      </Island>
+
+      {/* 2. Цвета [Не гармошка, заголовок над контейнером] */}
+      <IslandTitle>{getEthernetString(lang, 'EthernetSectionColors')}</IslandTitle>
+      <ThemeColorsEditor
+        colors={mod.colors}
+        onChange={(newColors) => update({ colors: newColors })}
+      />
+
+      {/* 3. Анимации [Не гармошка, заголовок над контейнером] */}
+      <IslandTitle>{getEthernetString(lang, 'EthernetSectionAnimations')}</IslandTitle>
+      <div className="theme-editor-card">
+        <Checkbox
+          label={getEthernetString(lang, 'EthernetAnimationsOff')}
+          checked={Boolean(mod.animationsDisabled)}
+          onChange={(e) => update({ animationsDisabled: e.currentTarget.checked })}
+        />
+        {!mod.animationsDisabled && (
+          <>
+            <RangeSlider
+              label={getEthernetString(lang, 'EthernetAnimationSpeed')}
+              min={50}
+              max={1000}
+              step={10}
+              value={mod.animationDuration || 300}
+              onChange={(d) => update({ animationDuration: d })}
+            />
+            <BezierEditor
+              curve={mod.animationCurve || '0.33, 1, 0.68, 1'}
+              duration={mod.animationDuration || 300}
+              onChange={(curve) => update({ animationCurve: curve })}
+            />
+          </>
+        )}
       </div>
 
-      {/* Секция Основные настройки (по умолчанию открыта) */}
-      <Section title={getEthernetString(lang, 'EthernetSectionMain')} defaultOpen>
-        <div className="colors-list">
-          {COLOR_VARS.map(({ key, langKey }) => (
-            <ColorRow
-              key={key}
-              cssKey={key}
-              label={getEthernetString(lang, langKey)}
-              value={mod.colors?.[key]}
-              onChange={(hex) => update({ colors: { ...mod.colors, [key]: hex } })}
-            />
-          ))}
+      {/* 4. Обои [Не гармошка, заголовок над контейнером] */}
+      <IslandTitle>{getEthernetString(lang, 'EthernetSectionWallpaper')}</IslandTitle>
+      <div className="theme-editor-card">
+        <div className="theme-editor-buttons-row">
+          <Button onClick={handleWallpaperPick} className="block">
+            {getEthernetString(lang, 'EthernetWallpaperPick')}
+          </Button>
+          <Button
+            onClick={() => {
+              const nextOpen = !isWallpaperColorOpen;
+              setIsWallpaperColorOpen(nextOpen);
+              if (nextOpen) {
+                handleWallpaperColorChange(wallpaperSolidColor || '#ff65a9');
+              }
+            }}
+            color={isWallpaperColorOpen ? 'primary' : 'translucent'}
+            className="block"
+          >
+            {getEthernetString(lang, 'EthernetWallpaperColor')}
+          </Button>
+          {(wallpaperInfo.slug || wallpaperInfo.file) && (
+            <Button onClick={handleWallpaperClear} color="translucent" className="block">
+              {getEthernetString(lang, 'EthernetWallpaperClear')}
+            </Button>
+          )}
         </div>
-
-        {/* Скругления — прямо под списком цветов */}
-        <div className="theme-editor-inline-group">
-          <h4 className="theme-editor-group-title">{getEthernetString(lang, 'EthernetSectionRounding')}</h4>
-          <RangeSlider
-            label={getEthernetString(lang, 'EthernetRadiusUi')}
-            min={0}
-            max={32}
-            value={radii.ui ?? 16}
-            onChange={(v) => updateRadius('ui', v)}
-          />
-          <RangeSlider
-            label={getEthernetString(lang, 'EthernetRadiusFoldersSidebar')}
-            min={0}
-            max={32}
-            value={radii.foldersSidebar ?? ((radii.ui ?? 16) + 8)}
-            onChange={(v) => updateRadius('foldersSidebar', v)}
-          />
-          <RangeSlider
-            label={getEthernetString(lang, 'EthernetRadiusMessages')}
-            min={0}
-            max={32}
-            value={radii.messages ?? 16}
-            onChange={(v) => updateRadius('messages', v)}
-          />
-          <RangeSlider
-            label={getEthernetString(lang, 'EthernetRadiusButtons')}
-            min={0}
-            max={24}
-            value={radii.buttons ?? 12}
-            onChange={(v) => updateRadius('buttons', v)}
-          />
-          <RangeSlider
-            label={getEthernetString(lang, 'EthernetRadiusAvatars')}
-            min={0}
-            max={50}
-            value={radii.avatars ?? 50}
-            onChange={(v) => updateRadius('avatars', v)}
-          />
-        </div>
-
-        {/* Обои — прямо под скруглениями */}
-        <div className="theme-editor-inline-group">
-          <h4 className="theme-editor-group-title">{getEthernetString(lang, 'EthernetSectionWallpaper')}</h4>
-          <div className="theme-editor-buttons-row">
-            <Button onClick={handleWallpaperPick} className="block">{getEthernetString(lang, 'EthernetWallpaperPick')}</Button>
-            {wallpaperInfo.slug && (
-              <Button onClick={handleWallpaperClear} color="translucent" className="block">{getEthernetString(lang, 'EthernetWallpaperClear')}</Button>
+        {wallpaperInfo.file && (
+          <div className="wallpaper-preview-box">
+            {typeof wallpaperInfo.file === 'string' && (wallpaperInfo.file.startsWith('#') || wallpaperInfo.file.startsWith('rgb')) ? (
+              <div
+                className="wallpaper-thumb"
+                style={`background-color: ${wallpaperInfo.file}; width: 100%; height: 6rem; border-radius: var(--border-radius-default-small);`}
+              />
+            ) : wallpaperInfo.file.endsWith('.mp4') || wallpaperInfo.file.endsWith('.webm') ? (
+              <video src={`/ethernet/wallpapers/${wallpaperInfo.file}`} autoPlay loop muted playsInline className="wallpaper-thumb" />
+            ) : (
+              <img src={`/ethernet/wallpapers/${wallpaperInfo.file}`} alt="" className="wallpaper-thumb" />
             )}
           </div>
-          {wallpaperInfo.file && (
-            <div className="wallpaper-preview-box">
-              {wallpaperInfo.file.endsWith('.mp4') || wallpaperInfo.file.endsWith('.webm') ? (
-                <video src={`/ethernet/wallpapers/${wallpaperInfo.file}`} autoPlay loop muted playsInline className="wallpaper-thumb" />
-              ) : (
-                <img src={`/ethernet/wallpapers/${wallpaperInfo.file}`} alt="" className="wallpaper-thumb" />
-              )}
-            </div>
-          )}
-          <span className="theme-editor-hint">{getEthernetString(lang, 'EthernetWallpaperHint')}</span>
-        </div>
+        )}
+        {isWallpaperColorOpen && (
+          <div className="wallpaper-color-picker-box">
+            <CustomColorPicker
+              hex={wallpaperSolidColor}
+              onChange={handleWallpaperColorChange}
+            />
+          </div>
+        )}
+      </div>
 
-        {/* Ширина чата — 3 центрированные кнопки */}
+      {/* 5. Гармошка "Скругления" с отдельным параметром топбара и калиброванными диапазонами */}
+      <Section title={getEthernetString(lang, 'EthernetSectionRounding')}>
+        <RangeSlider
+          label={getEthernetString(lang, 'EthernetRadiusUi')}
+          min={0}
+          max={24}
+          value={radii.ui ?? 16}
+          onChange={(v) => updateRadius('ui', v)}
+        />
+        <RangeSlider
+          label={getEthernetString(lang, 'EthernetRadiusTopbar')}
+          min={0}
+          max={28}
+          value={radii.topbar ?? ((radii.ui ?? 16) + 8)}
+          onChange={(v) => updateRadius('topbar', v)}
+        />
+        <RangeSlider
+          label={getEthernetString(lang, 'EthernetRadiusFoldersSidebar')}
+          min={0}
+          max={28}
+          value={radii.foldersSidebar ?? ((radii.ui ?? 16) + 8)}
+          onChange={(v) => updateRadius('foldersSidebar', v)}
+        />
+        <RangeSlider
+          label={getEthernetString(lang, 'EthernetRadiusMessages')}
+          min={0}
+          max={24}
+          value={radii.messages ?? 16}
+          onChange={(v) => updateRadius('messages', v)}
+        />
+        <RangeSlider
+          label={getEthernetString(lang, 'EthernetRadiusInput')}
+          min={0}
+          max={26}
+          value={radii.input ?? 24}
+          onChange={(v) => updateRadius('input', v)}
+        />
+        <RangeSlider
+          label={getEthernetString(lang, 'EthernetRadiusButtons')}
+          min={0}
+          max={20}
+          value={radii.buttons ?? 12}
+          onChange={(v) => updateRadius('buttons', v)}
+        />
+        <RangeSlider
+          label={getEthernetString(lang, 'EthernetRadiusAvatars')}
+          min={0}
+          max={50}
+          value={radii.avatars ?? 50}
+          onChange={(v) => updateRadius('avatars', v)}
+        />
+      </Section>
+
+      {/* 6. Гармошка "Блюр" */}
+      <Section title={getEthernetString(lang, 'EthernetSectionBlur')}>
+        <RangeSlider
+          label={getEthernetString(lang, 'EthernetBlurStrength')}
+          min={0}
+          max={40}
+          value={mod.blurStrength || 0}
+          onChange={(v) => update({ blurStrength: v })}
+        />
+        <Checkbox label={getEthernetString(lang, 'EthernetBlurHeader')} checked={Boolean(mod.blurTargets?.header)} onChange={(e) => setBlurTarget('header', e.currentTarget.checked)} />
+        <Checkbox label={getEthernetString(lang, 'EthernetBlurMenus')} checked={Boolean(mod.blurTargets?.menus)} onChange={(e) => setBlurTarget('menus', e.currentTarget.checked)} />
+      </Section>
+
+      {/* 7. Гармошка "Чат" */}
+      <Section title={getEthernetString(lang, 'EthernetSectionChat')}>
+        {/* Ширина чата */}
         <div className="theme-editor-inline-group">
           <h4 className="theme-editor-group-title">{getEthernetString(lang, 'EthernetChatWidth')}</h4>
           <div className="anim-presets chat-width-presets">
@@ -878,75 +1108,58 @@ function applyLiveRadii(radii: EthernetRadii) {
             ))}
           </div>
         </div>
+
+        {/* Ширина сообщений с медиа */}
+        <div className="theme-editor-inline-group" style="margin-top: 0.75rem;">
+          <h4 className="theme-editor-group-title">{getEthernetString(lang, 'EthernetMediaMessageWidth')}</h4>
+          <div className="anim-presets chat-width-presets">
+            {[
+              { key: 'standard', label: getEthernetString(lang, 'EthernetMediaWidthStandard') },
+              { key: 'wide', label: getEthernetString(lang, 'EthernetMediaWidthWide') },
+              { key: 'full', label: getEthernetString(lang, 'EthernetMediaWidthFull') },
+            ].map(({ key, label }) => (
+              <button
+                type="button"
+                key={key}
+                className={buildClassName('anim-preset', (mod.mediaMessageWidth || 'full') === key && 'active')}
+                onClick={() => update({ mediaMessageWidth: key as any })}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Режим открытия профиля */}
+        <div className="theme-editor-inline-group" style="margin-top: 0.75rem;">
+          <h4 className="theme-editor-group-title">{getEthernetString(lang, 'EthernetProfileOpenMode')}</h4>
+          <div className="anim-presets chat-width-presets">
+            {[
+              { key: 'shift', label: getEthernetString(lang, 'EthernetProfileOpenModeShift') },
+              { key: 'overlay', label: getEthernetString(lang, 'EthernetProfileOpenModeOverlay') },
+            ].map(({ key, label }) => (
+              <button
+                type="button"
+                key={key}
+                className={buildClassName('anim-preset', (mod.profileOpenMode || 'shift') === key && 'active')}
+                onClick={() => update({ profileOpenMode: key as any })}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
       </Section>
 
-      {/* Гармошка Блюр */}
-      <Section title={getEthernetString(lang, 'EthernetSectionBlur')}>
-        <RangeSlider
-          label={getEthernetString(lang, 'EthernetBlurStrength')}
-          min={0}
-          max={40}
-          value={mod.blurStrength || 0}
-          onChange={(v) => update({ blurStrength: v })}
-        />
-        <Checkbox label={getEthernetString(lang, 'EthernetBlurHeader')} checked={Boolean(mod.blurTargets?.header)} onChange={(e) => setBlurTarget('header', e.currentTarget.checked)} />
-        <Checkbox label={getEthernetString(lang, 'EthernetBlurMenus')} checked={Boolean(mod.blurTargets?.menus)} onChange={(e) => setBlurTarget('menus', e.currentTarget.checked)} />
-      </Section>
-
-      {/* Гармошка Анимации */}
-      <Section title={getEthernetString(lang, 'EthernetSectionAnimations')}>
-        {/* 1. Галочка отключения анимаций на самом верху */}
+      {/* 8. Другие настройки [Не гармошка, заголовок над контейнером] */}
+      <IslandTitle>{getEthernetString(lang, 'EthernetSectionOther')}</IslandTitle>
+      <div className="theme-editor-card">
         <Checkbox
-          label={getEthernetString(lang, 'EthernetAnimationsOff')}
-          checked={Boolean(mod.animationsDisabled)}
-          onChange={(e) => update({ animationsDisabled: e.currentTarget.checked })}
+          label={getEthernetString(lang, 'EthernetHideTitlebar')}
+          checked={Boolean(mod.hideTitlebar)}
+          onChange={(e) => update({ hideTitlebar: e.currentTarget.checked })}
         />
-
-        {/* 2. Галочка отключения эффекта рассеивания сообщений */}
-        <Checkbox
-          label={getEthernetString(lang, 'EthernetDisableSnapEffect')}
-          checked={Boolean(mod.disableSnapEffect)}
-          onChange={(e) => update({ disableSnapEffect: e.currentTarget.checked })}
-        />
-
-        {!mod.animationsDisabled && (
-          <>
-            {/* 3. Слайдер длительности */}
-            <RangeSlider
-              label={getEthernetString(lang, 'EthernetAnimationSpeed')}
-              min={50}
-              max={1000}
-              step={10}
-              value={mod.animationDuration || 300}
-              onChange={(d) => update({ animationDuration: d })}
-            />
-
-            {/* 3. Пресеты анимаций над графиком */}
-            <div className="anim-presets">
-              {ANIMATION_PRESETS.map((p) => (
-                <button
-                  type="button"
-                  key={p.label}
-                  className={buildClassName(
-                    'anim-preset',
-                    mod.animationDuration === p.duration && mod.animationCurve === p.curve && 'active',
-                  )}
-                  onClick={() => update({ animationDuration: p.duration, animationCurve: p.curve })}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-
-            {/* 4. График и координаты */}
-            <BezierEditor
-              curve={mod.animationCurve || '0.33, 1, 0.68, 1'}
-              duration={mod.animationDuration || 300}
-              onChange={(curve) => update({ animationCurve: curve })}
-            />
-          </>
-        )}
-      </Section>
+      </div>
 
       <ThemeCssEditorModal
         isOpen={isCssEditorOpen}

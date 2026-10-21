@@ -182,7 +182,10 @@
   label,
   select,
   summary,
-  textarea {
+  textarea,
+  .ListItem,
+  .Chat,
+  .chat-item-clickable {
     touch-action: manipulation;
   }
 

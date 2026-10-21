@@ -4,10 +4,11 @@ export type EthernetBadgeType = 'development' | 'support';
 export const CLOUDFLARE_WORKER_URL = 'https://eth.ethernet-0e3.workers.dev';
 
 const REMOTE_SHA_URL = 'https://raw.githubusercontent.com/imsosha/ethernet-assets/refs/heads/main/SHA';
-const PEER_CACHE_STORAGE_KEY = 'ethernet_peer_badges_v2';
+const PEER_CACHE_STORAGE_KEY = 'ethernet_peer_badges_v3';
 const SHA_CACHE_STORAGE_KEY = 'ethernet_badges_cache_pbkdf2_v1';
 const DEFAULT_SALT = 'ethernet_salt_v1';
 const PBKDF2_ITERATIONS = 50000;
+const NEGATIVE_CACHE_TTL_MS = 2 * 60 * 1000; // 2 минуты для отрицательного кэша в памяти
 
 interface BadgeData {
   salt: string;
@@ -30,18 +31,26 @@ const badgeData: BadgeData = {
 
 // Быстрый синхронный кэш вычисленных статусов для пиров
 const resolvedBadgesCache = new Map<string, EthernetBadgeType | null>();
+const negativeCacheTimestamps = new Map<string, number>();
 const pendingCalculations = new Map<string, Promise<EthernetBadgeType | undefined>>();
 const listeners = new Set<() => void>();
 
 // Загрузка долгосрочного кэша пиров из LocalStorage
 function loadPeerCache() {
   try {
+    // Очищаем старые версии кэша, где навсегда застревали null значения
+    localStorage.removeItem('ethernet_peer_badges');
+    localStorage.removeItem('ethernet_peer_badges_v2');
+
     const raw = localStorage.getItem(PEER_CACHE_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === 'object') {
         Object.entries(parsed).forEach(([id, type]) => {
-          resolvedBadgesCache.set(id, (type as EthernetBadgeType) || null);
+          // Загружаем только подтвержденные валидные бейджи
+          if (type === 'development' || type === 'support') {
+            resolvedBadgesCache.set(id, type);
+          }
         });
       }
     }
@@ -50,9 +59,12 @@ function loadPeerCache() {
 
 function savePeerCache() {
   try {
-    const obj: Record<string, string | null> = {};
+    const obj: Record<string, string> = {};
     resolvedBadgesCache.forEach((val, id) => {
-      obj[id] = val;
+      // Сохраняем в LocalStorage ТОЛЬКО положительные подтвержденные бейджи
+      if (val === 'development' || val === 'support') {
+        obj[id] = val;
+      }
     });
     localStorage.setItem(PEER_CACHE_STORAGE_KEY, JSON.stringify(obj));
   } catch {}
@@ -125,7 +137,12 @@ function getPeerIdVariations(peerId: string | number): string[] {
 async function fetchBadgeFromWorker(peerId: string): Promise<EthernetBadgeType | undefined | null> {
   if (!CLOUDFLARE_WORKER_URL) return undefined;
   try {
-    const res = await fetch(`${CLOUDFLARE_WORKER_URL}/badge?id=${encodeURIComponent(peerId)}`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(`${CLOUDFLARE_WORKER_URL}/badge?id=${encodeURIComponent(peerId)}`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
     if (res.ok) {
       const data = await res.json();
       if (data && 'badge' in data) {
@@ -139,11 +156,23 @@ async function fetchBadgeFromWorker(peerId: string): Promise<EthernetBadgeType |
 // Вычисление и проверка статуса пира по его ID
 export async function calculatePeerBadge(peerId?: string | number): Promise<EthernetBadgeType | undefined> {
   if (!peerId) return undefined;
-  const key = String(peerId);
+  const key = String(peerId).trim();
+  if (!key) return undefined;
 
-  if (resolvedBadgesCache.has(key)) {
-    const cached = resolvedBadgesCache.get(key);
-    return cached || undefined;
+  // Если уже подтвержден положительный статус
+  const existing = resolvedBadgesCache.get(key);
+  if (existing === 'development' || existing === 'support') {
+    return existing;
+  }
+
+  // Если отрицательный результат закэширован в памяти, проверяем TTL
+  if (existing === null) {
+    const ts = negativeCacheTimestamps.get(key) || 0;
+    if (Date.now() - ts < NEGATIVE_CACHE_TTL_MS) {
+      return undefined;
+    }
+    resolvedBadgesCache.delete(key);
+    negativeCacheTimestamps.delete(key);
   }
 
   if (pendingCalculations.has(key)) {
@@ -153,32 +182,47 @@ export async function calculatePeerBadge(peerId?: string | number): Promise<Ethe
   const promise = (async () => {
     try {
       // 1. Попытка получить через защищенный Cloudflare Worker
-      const workerResult = await fetchBadgeFromWorker(key);
-      if (workerResult !== undefined) {
+      const variations = getPeerIdVariations(key);
+      let workerResult: EthernetBadgeType | undefined | null = undefined;
+
+      for (const variant of variations) {
+        const res = await fetchBadgeFromWorker(variant);
+        if (res === 'development' || res === 'support') {
+          workerResult = res;
+          break;
+        } else if (res === null && workerResult === undefined) {
+          workerResult = null;
+        }
+      }
+
+      if (workerResult === 'development' || workerResult === 'support') {
         resolvedBadgesCache.set(key, workerResult);
         savePeerCache();
-        return workerResult || undefined;
+        notifyListeners();
+        return workerResult;
       }
 
       // 2. Резервный расчет по локальным/GitHub хэшам (если воркер недоступен)
-      const variations = getPeerIdVariations(peerId);
       for (const variant of variations) {
         const hash = await pbkdf2Hex(variant);
 
         if (badgeData.development.has(hash)) {
           resolvedBadgesCache.set(key, 'development');
           savePeerCache();
+          notifyListeners();
           return 'development';
         }
         if (badgeData.support.has(hash)) {
           resolvedBadgesCache.set(key, 'support');
           savePeerCache();
+          notifyListeners();
           return 'support';
         }
       }
 
+      // Кэшируем отрицательный ответ ТОЛЬКО в оперативной памяти на 2 минуты
       resolvedBadgesCache.set(key, null);
-      savePeerCache();
+      negativeCacheTimestamps.set(key, Date.now());
       return undefined;
     } finally {
       pendingCalculations.delete(key);

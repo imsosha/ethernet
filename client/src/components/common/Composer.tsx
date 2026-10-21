@@ -656,7 +656,8 @@ const Composer = ({
   });
 
   const checkCanSendRichContent = useLastCallback(() => {
-    if (!isInMessageList || isCurrentUserPremium) {
+    const isChannelAdmin = Boolean(isChannel && chat && (chat.isCreator || isChatAdmin(chat)));
+    if (!isInMessageList || isCurrentUserPremium || isChannelAdmin) {
       return true;
     }
 
@@ -1385,7 +1386,7 @@ const Composer = ({
     const shouldSkipCollapseLatch = Boolean(editingMessage) || Boolean(scheduledAt && !isInScheduledList);
 
     // Wait until message animation starts
-    requestMeasure(() => {
+    requestMutation(() => {
       resetComposer(false, shouldSkipCollapseLatch);
     });
   });
@@ -1501,7 +1502,7 @@ const Composer = ({
 
         const shouldSkipCollapseLatch = Boolean(editingMessage) || Boolean(scheduledAt && !isInScheduledList);
 
-        requestMeasure(() => {
+        requestMutation(() => {
           resetComposer(false, shouldSkipCollapseLatch);
         });
         return;
@@ -1549,7 +1550,7 @@ const Composer = ({
       }
 
       // Wait until message animation starts
-      requestMeasure(() => {
+      requestMutation(() => {
         resetComposer(false, Boolean(scheduledAt && !isInScheduledList));
       });
     },
@@ -2513,7 +2514,7 @@ const Composer = ({
 
   const effectEmoji = areEffectsSupported && effect?.emoticon;
 
-  const canOpenRichInput = shouldShowRichInputButton && isInMessageList && !hasAttachments && !isRichInputExpanded
+  const canOpenRichInput = isInMessageList && !hasAttachments && !isRichInputExpanded
     && !isComposerBlocked;
   const canCloseRichInput = Boolean(isRichInputExpansionActive && !isComposerBlocked);
   const canToggleRichInput = canOpenRichInput || canCloseRichInput;

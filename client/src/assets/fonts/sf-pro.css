@@ -1,39 +1,13 @@
-/* SF Pro Display & SF Pro Text - Embedded Local Font Suite */
+/* SF Pro Text — Основной встроенный шрифт приложения */
 
-/* SF Pro Display */
+/* 1. Регуляр: до 410 (100–410) */
 @font-face {
-  font-family: 'SF Pro Display';
+  font-family: 'SF Pro Text';
   font-style: normal;
-  font-weight: 400;
+  font-weight: 100 410;
   font-display: swap;
-  src: url('./SF-Pro-Display-Regular.otf') format('opentype');
+  src: url('./SF-Pro-Text-Regular.otf') format('opentype');
 }
-
-@font-face {
-  font-family: 'SF Pro Display';
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url('./SF-Pro-Display-Medium.otf') format('opentype');
-}
-
-@font-face {
-  font-family: 'SF Pro Display';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('./SF-Pro-Display-Semibold.otf') format('opentype');
-}
-
-@font-face {
-  font-family: 'SF Pro Display';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('./SF-Pro-Display-Bold.otf') format('opentype');
-}
-
-/* SF Pro Text */
 @font-face {
   font-family: 'SF Pro Text';
   font-style: normal;
@@ -42,6 +16,14 @@
   src: url('./SF-Pro-Text-Regular.otf') format('opentype');
 }
 
+/* 2. Медиум: до 510 (411–510) */
+@font-face {
+  font-family: 'SF Pro Text';
+  font-style: normal;
+  font-weight: 411 510;
+  font-display: swap;
+  src: url('./SF-Pro-Text-Medium.otf') format('opentype');
+}
 @font-face {
   font-family: 'SF Pro Text';
   font-style: normal;
@@ -50,6 +32,14 @@
   src: url('./SF-Pro-Text-Medium.otf') format('opentype');
 }
 
+/* 3. Семиболд: до 610 (511–610) */
+@font-face {
+  font-family: 'SF Pro Text';
+  font-style: normal;
+  font-weight: 511 610;
+  font-display: swap;
+  src: url('./SF-Pro-Text-Semibold.otf') format('opentype');
+}
 @font-face {
   font-family: 'SF Pro Text';
   font-style: normal;
@@ -58,6 +48,14 @@
   src: url('./SF-Pro-Text-Semibold.otf') format('opentype');
 }
 
+/* 4. Болд: до 710 и выше (611–1000) БЕЗ эмуляции контуров */
+@font-face {
+  font-family: 'SF Pro Text';
+  font-style: normal;
+  font-weight: 611 1000;
+  font-display: swap;
+  src: url('./SF-Pro-Text-Bold.otf') format('opentype');
+}
 @font-face {
   font-family: 'SF Pro Text';
   font-style: normal;
@@ -65,36 +63,161 @@
   font-display: swap;
   src: url('./SF-Pro-Text-Bold.otf') format('opentype');
 }
+@font-face {
+  font-family: 'SF Pro Text';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('./SF-Pro-Text-Bold.otf') format('opentype');
+}
+@font-face {
+  font-family: 'SF Pro Text';
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url('./SF-Pro-Text-Bold.otf') format('opentype');
+}
 
-/* SF Pro (Universal Alias) */
+/* Универсальный алиас 'SF Pro' -> SF Pro Text */
+@font-face {
+  font-family: 'SF Pro';
+  font-style: normal;
+  font-weight: 100 410;
+  font-display: swap;
+  src: url('./SF-Pro-Text-Regular.otf') format('opentype');
+}
 @font-face {
   font-family: 'SF Pro';
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('./SF-Pro-Display-Regular.otf') format('opentype');
+  src: url('./SF-Pro-Text-Regular.otf') format('opentype');
 }
-
+@font-face {
+  font-family: 'SF Pro';
+  font-style: normal;
+  font-weight: 411 510;
+  font-display: swap;
+  src: url('./SF-Pro-Text-Medium.otf') format('opentype');
+}
 @font-face {
   font-family: 'SF Pro';
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url('./SF-Pro-Display-Medium.otf') format('opentype');
+  src: url('./SF-Pro-Text-Medium.otf') format('opentype');
 }
-
+@font-face {
+  font-family: 'SF Pro';
+  font-style: normal;
+  font-weight: 511 610;
+  font-display: swap;
+  src: url('./SF-Pro-Text-Semibold.otf') format('opentype');
+}
 @font-face {
   font-family: 'SF Pro';
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url('./SF-Pro-Display-Semibold.otf') format('opentype');
+  src: url('./SF-Pro-Text-Semibold.otf') format('opentype');
 }
-
+@font-face {
+  font-family: 'SF Pro';
+  font-style: normal;
+  font-weight: 611 1000;
+  font-display: swap;
+  src: url('./SF-Pro-Text-Bold.otf') format('opentype');
+}
 @font-face {
   font-family: 'SF Pro';
   font-style: normal;
   font-weight: 700;
   font-display: swap;
-  src: url('./SF-Pro-Display-Bold.otf') format('opentype');
+  src: url('./SF-Pro-Text-Bold.otf') format('opentype');
+}
+@font-face {
+  font-family: 'SF Pro';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('./SF-Pro-Text-Bold.otf') format('opentype');
+}
+@font-face {
+  font-family: 'SF Pro';
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url('./SF-Pro-Text-Bold.otf') format('opentype');
+}
+
+/* Алиас 'SF Pro Display' перенаправлен на SF Pro Text */
+@font-face {
+  font-family: 'SF Pro Display';
+  font-style: normal;
+  font-weight: 100 410;
+  font-display: swap;
+  src: url('./SF-Pro-Text-Regular.otf') format('opentype');
+}
+@font-face {
+  font-family: 'SF Pro Display';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./SF-Pro-Text-Regular.otf') format('opentype');
+}
+@font-face {
+  font-family: 'SF Pro Display';
+  font-style: normal;
+  font-weight: 411 510;
+  font-display: swap;
+  src: url('./SF-Pro-Text-Medium.otf') format('opentype');
+}
+@font-face {
+  font-family: 'SF Pro Display';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./SF-Pro-Text-Medium.otf') format('opentype');
+}
+@font-face {
+  font-family: 'SF Pro Display';
+  font-style: normal;
+  font-weight: 511 610;
+  font-display: swap;
+  src: url('./SF-Pro-Text-Semibold.otf') format('opentype');
+}
+@font-face {
+  font-family: 'SF Pro Display';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./SF-Pro-Text-Semibold.otf') format('opentype');
+}
+@font-face {
+  font-family: 'SF Pro Display';
+  font-style: normal;
+  font-weight: 611 1000;
+  font-display: swap;
+  src: url('./SF-Pro-Text-Bold.otf') format('opentype');
+}
+@font-face {
+  font-family: 'SF Pro Display';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./SF-Pro-Text-Bold.otf') format('opentype');
+}
+@font-face {
+  font-family: 'SF Pro Display';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('./SF-Pro-Text-Bold.otf') format('opentype');
+}
+@font-face {
+  font-family: 'SF Pro Display';
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url('./SF-Pro-Text-Bold.otf') format('opentype');
 }

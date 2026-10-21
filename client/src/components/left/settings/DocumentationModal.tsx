@@ -211,6 +211,19 @@ const DocumentationModal: FC<OwnProps> = ({
               </div>
 
               <div className={styles.section}>
+                <div className={styles.sectionTitle}>Универсальный формат пакетов (.eth)</div>
+                <p className={styles.text}>
+                  Формат <code>.eth</code> — это универсальный стандарт пакетов Ethernet для тем, плагинов и готовых бандлов:
+                </p>
+                <ul className={styles.list}>
+                  <li><strong>Для плагинов (<code>type: 'plugin'</code>):</strong> упаковывает JavaScript код, объявленные разрешения песочницы, версию и векторную SVG-иконку в единый безопасный дистрибутив.</li>
+                  <li><strong>Для тем (<code>type: 'theme'</code>):</strong> упаковывает CSS-палитру, геометрию, параметры блюра/скруглений, видео/фото-обои и <strong>встроенные зависимые плагины</strong> (<code>plugins: [...]</code>).</li>
+                  <li><strong>Принцип умного роутинга:</strong> при импорте любого <code>.eth</code> файла клиент автоматически распознает содержимое: разворачивает тему в <code>themes/</code>, а зависимые плагины устанавливает в <code>plugins/</code> с бейджем <code>🎨 Тема: [Название]</code>.</li>
+                  <li><strong>Иконки и брендинг:</strong> поддерживает директиву <code>@icon &lt;svg ...&gt;</code> или поле <code>icon</code> с чистым векторным SVG для кастомного отображения в интерфейсе.</li>
+                </ul>
+              </div>
+
+              <div className={styles.section}>
                 <div className={styles.sectionTitle}>Живые анимированные видео-обои</div>
                 <p className={styles.text}>
                   Клиент поддерживает привязку персональных обоев к каждой теме:
@@ -424,7 +437,15 @@ const DocumentationModal: FC<OwnProps> = ({
 
 // --- CODE CONSTANTS ---
 
-const THEME_TEMPLATE_CODE = `:root {
+const THEME_TEMPLATE_CODE = `/*
+  @name Obsidian Theme
+  @author Ethernet Community
+  @version 1.0.0
+  @description Современная контрастная темная тема
+  @icon <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+*/
+
+:root {
   --color-background: #1d1d1d;
   --color-background-secondary: #181818;
   --color-background-sidebar: #0a0a0a;
@@ -589,25 +610,53 @@ const EXAMPLE_THEME_CODE = `:root {
 
 const FULL_MARKDOWN_DOCS = `# Документация Ethernet Client: Темы и Плагины
 
-## 1. Темы (CSS)
-Темы в клиенте Ethernet — это файлы .css со списком переменных :root.
-Основные переменные:
-- --color-background: основной фон
-- --color-background-secondary: фон входящих сообщений
-- --color-background-own: фон своих сообщений
-- --color-background-sidebar: фон сайдбара
-- --color-primary: акцентный цвет
-- --color-text: цвет текста
-- --color-text-secondary: цвет второстепенного текста
-- --color-links: цвет ссылок
-- --color-borders: цвет границ
-- --border-radius-default: скругление интерфейса
-- --border-radius-messages: скругление сообщений
-- --border-radius-buttons: скругление кнопок
+## 1. Универсальный Формат (.eth) и Темы
+Формат \`.eth\` — это универсальный стандарт дистрибутивов для клиента Ethernet, объединяющий темы, плагины и комплексные бандлы в структурированном JSON:
+- \`type: 'plugin'\`: автономный плагин (код, манифест прав, иконка).
+- \`type: 'theme'\`: тема оформления (CSS, геометрия, обои) + встроенные зависимые плагины в массиве \`plugins: [...]\`.
+- \`type: 'bundle'\`: комбинированный пакет темы и набора плагинов.
+
+Принцип работы: при импорте любого \`.eth\` файла клиент сам определяет его тип, сохраняет тему в каталог \`themes/\`, а плагины устанавливает в \`plugins/\` с отметкой зависимости «🎨 Тема: [Название]». Также сохраняется полная обратная совместимость со стандартными файлами \`.css\` и \`.js\`.
+
+### Метаданные темы и SVG-логотипы:
+В начале темы можно указать метаданные:
+\`\`\`css
+/*
+  @name Название Темы
+  @author Автор
+  @version 1.0.0
+  @description Описание темы
+  @icon <svg viewBox="0 0 24 24"><path fill="currentColor" d="..."/></svg>
+*/
+\`\`\`
+
+### Связка тем с плагинами:
+Внутри пакета \`.eth\` для темы массив \`plugins: [...]\` содержит объекты плагинов. При импорте темы клиент автоматически инсталлирует плагины, выдавая им понятную плашку: «Требуется для темы: [Название]».
+
+### Основные переменные CSS:
+- \`--color-background\`: основной фон
+- \`--color-background-secondary\`: фон входящих сообщений
+- \`--color-background-own\`: фон своих сообщений
+- \`--color-background-sidebar\`: фон сайдбара
+- \`--color-primary\`: акцентный цвет
+- \`--color-text\`: цвет текста
+- \`--color-text-secondary\`: цвет второстепенного текста
+- \`--color-links\`: цвет ссылок
+- \`--color-borders\`: цвет границ
+- \`--border-radius-default\`: скругление интерфейса
+- \`--border-radius-messages\`: скругление сообщений
+- \`--border-radius-buttons\`: скругление кнопок
 
 ## 2. Плагины (JavaScript)
-Плагины выполняются в IIFE:
+Плагины выполняются в изолированной песочнице с объявлением прав и метаданных:
 \`\`\`javascript
+/**
+ * @name My Plugin
+ * @version 1.0.0
+ * @author User
+ * @icon <svg viewBox="0 0 24 24"><path fill="currentColor" d="..."/></svg>
+ * @permissions dom.style, ui.toast, storage.local
+ */
 (function() {
   const { api, store, addStyle, log, on } = window.ethernet;
   // api.beforeRequest(method, args) -> return false для отмены

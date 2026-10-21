@@ -180,13 +180,90 @@ export function buildReplyButtons(
         };
       }
 
-      if (button instanceof GramJs.KeyboardButtonCopy) {
+      if (button instanceof GramJs.KeyboardButtonCopy || (button as any)?.className === 'KeyboardButtonCopy') {
         return {
           ...baseButton,
           type: 'copy',
           text,
           copyText: button.copyText,
         };
+      }
+
+      if (button instanceof GramJs.KeyboardInlineButton || (button as any)?.className === 'KeyboardInlineButton') {
+        const btnType = (button as any).type;
+        if (btnType instanceof GramJs.InlineButtonTypeCopy || btnType?.className === 'InlineButtonTypeCopy') {
+          return {
+            ...baseButton,
+            type: 'copy',
+            text,
+            copyText: btnType.copyText,
+          };
+        }
+        if (btnType instanceof GramJs.InlineButtonTypeUrl || btnType?.className === 'InlineButtonTypeUrl') {
+          return {
+            ...baseButton,
+            type: 'url',
+            text,
+            url: btnType.url,
+          };
+        }
+        if (btnType instanceof GramJs.InlineButtonTypeUrlAuth || btnType?.className === 'InlineButtonTypeUrlAuth') {
+          return {
+            ...baseButton,
+            type: 'urlAuth',
+            text,
+            url: btnType.url,
+            buttonId: btnType.buttonId,
+          };
+        }
+        if (btnType instanceof GramJs.InlineButtonTypeCallback || btnType?.className === 'InlineButtonTypeCallback') {
+          return {
+            ...baseButton,
+            type: 'callback',
+            text,
+            data: btnType.data,
+            requiresPassword: btnType.requiresPassword,
+          };
+        }
+        if (btnType instanceof GramJs.InlineButtonTypeWebView || btnType?.className === 'InlineButtonTypeWebView') {
+          return {
+            ...baseButton,
+            type: 'webView',
+            text,
+            url: btnType.url,
+          };
+        }
+        if (btnType instanceof GramJs.InlineButtonTypeBuy || btnType?.className === 'InlineButtonTypeBuy') {
+          return {
+            ...baseButton,
+            type: 'buy',
+            text,
+          };
+        }
+        if (btnType instanceof GramJs.InlineButtonTypeGame || btnType?.className === 'InlineButtonTypeGame') {
+          return {
+            ...baseButton,
+            type: 'game',
+            text,
+          };
+        }
+        if (btnType instanceof GramJs.InlineButtonTypeSwitchInline || btnType?.className === 'InlineButtonTypeSwitchInline') {
+          return {
+            ...baseButton,
+            type: 'switchBotInline',
+            text,
+            query: btnType.query,
+            isSamePeer: btnType.samePeer,
+          };
+        }
+        if (btnType instanceof GramJs.InlineButtonTypeUserProfile || btnType?.className === 'InlineButtonTypeUserProfile') {
+          return {
+            ...baseButton,
+            type: 'userProfile',
+            text,
+            userId: btnType.userId.toString(),
+          };
+        }
       }
 
       return {

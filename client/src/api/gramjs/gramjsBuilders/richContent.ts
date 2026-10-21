@@ -72,6 +72,14 @@ function buildMtpPageBlock(block: ApiPageBlock): GramJs.TypePageBlock | undefine
       return buildDetailsPageBlock(block.title, block.blocks, block.isOpen);
     case 'table':
       return buildTablePageBlock(block.title, block.rows, block.isBordered, block.isStriped);
+    case 'anchor':
+      return new GramJs.PageBlockAnchor({ name: block.name });
+    case 'authorDate': {
+      const mtpAuthor = buildMtpRichText(block.author);
+      return mtpAuthor ? new GramJs.PageBlockAuthorDate({ author: mtpAuthor, publishedDate: block.publishedDate }) : undefined;
+    }
+    case 'buttonRow':
+      return buildButtonRowPageBlock(block);
     default:
       return undefined;
   }
@@ -207,9 +215,117 @@ function buildMtpRichText(text: ApiRichText): GramJs.TypeRichText | undefined {
         documentId: BigInt(text.documentId),
         alt: text.alt,
       });
+    case 'phone':
+      return buildPhoneRichText(text);
+    case 'anchor':
+      return buildAnchorRichText(text);
+    case 'diff':
+      return buildDiffRichText(text);
+    case 'hashtag':
+      return buildNestedRichText(text.text, GramJs.TextHashtag);
+    case 'botCommand':
+      return buildNestedRichText(text.text, GramJs.TextBotCommand);
+    case 'cashtag':
+      return buildNestedRichText(text.text, GramJs.TextCashtag);
+    case 'autoUrl':
+      return buildNestedRichText(text.text, GramJs.TextAutoUrl);
+    case 'autoEmail':
+      return buildNestedRichText(text.text, GramJs.TextAutoEmail);
+    case 'autoPhone':
+      return buildNestedRichText(text.text, GramJs.TextAutoPhone);
+    case 'bankCard':
+      return buildNestedRichText(text.text, GramJs.TextBankCard);
+    case 'button':
+      return buildButtonRichText(text);
     default:
       return undefined;
   }
+}
+
+function buildButtonRowPageBlock(block: Extract<ApiPageBlock, { type: 'buttonRow' }>): GramJs.PageBlockButtonRow | undefined {
+  const buttons: GramJs.PageButton[] = [];
+  for (const btn of block.buttons) {
+    const text = buildMtpRichText(btn.text);
+    if (!text) continue;
+    let buttonType: GramJs.TypeInlineButtonType | undefined;
+    switch (btn.buttonType.type) {
+      case 'url':
+        buttonType = new GramJs.InlineButtonTypeUrl({ url: btn.buttonType.url });
+        break;
+      case 'copy':
+        buttonType = new GramJs.InlineButtonTypeCopy({ copyText: btn.buttonType.copyText });
+        break;
+      case 'webView':
+        buttonType = new GramJs.InlineButtonTypeWebView({ url: btn.buttonType.url });
+        break;
+      case 'callback':
+        buttonType = new GramJs.InlineButtonTypeCallback({
+          data: btn.buttonType.data,
+          requiresPassword: btn.buttonType.requiresPassword,
+        });
+        break;
+      default:
+        buttonType = new GramJs.InlineButtonTypeDisabled();
+        break;
+    }
+    const style = btn.style ? new GramJs.RichButtonStyle({
+      bgPrimary: btn.style.isPrimary,
+      bgDanger: btn.style.isDanger,
+      bgSuccess: btn.style.isSuccess,
+      link: btn.style.isLink,
+    }) : undefined;
+    buttons.push(new GramJs.PageButton({ text, type: buttonType, style }));
+  }
+
+  return new GramJs.PageBlockButtonRow({
+    alignLeft: block.align === 'left' || undefined,
+    alignCenter: block.align === 'center' || undefined,
+    alignRight: block.align === 'right' || undefined,
+    buttons,
+  });
+}
+
+function buildButtonRichText(text: Extract<ApiRichText, { type: 'button' }>) {
+  const mtpText = buildMtpRichText(text.text);
+  if (!mtpText) return undefined;
+  let buttonType: GramJs.TypeInlineButtonType;
+  switch (text.buttonType.type) {
+    case 'url':
+      buttonType = new GramJs.InlineButtonTypeUrl({ url: text.buttonType.url });
+      break;
+    case 'copy':
+      buttonType = new GramJs.InlineButtonTypeCopy({ copyText: text.buttonType.copyText });
+      break;
+    case 'webView':
+      buttonType = new GramJs.InlineButtonTypeWebView({ url: text.buttonType.url });
+      break;
+    default:
+      buttonType = new GramJs.InlineButtonTypeDisabled();
+      break;
+  }
+  const style = text.style ? new GramJs.RichButtonStyle({
+    bgPrimary: text.style.isPrimary,
+    bgDanger: text.style.isDanger,
+    bgSuccess: text.style.isSuccess,
+    link: text.style.isLink,
+  }) : undefined;
+  return new GramJs.TextButton({ text: mtpText, type: buttonType, style });
+}
+
+function buildPhoneRichText(text: Extract<ApiRichText, { type: 'phone' }>) {
+  const mtpText = buildMtpRichText(text.text);
+  return mtpText ? new GramJs.TextPhone({ text: mtpText, phone: text.phone }) : undefined;
+}
+
+function buildAnchorRichText(text: Extract<ApiRichText, { type: 'anchor' }>) {
+  const mtpText = buildMtpRichText(text.text);
+  return mtpText ? new GramJs.TextAnchor({ text: mtpText, name: text.name }) : undefined;
+}
+
+function buildDiffRichText(text: Extract<ApiRichText, { type: 'diff' }>) {
+  const mtpText = buildMtpRichText(text.text);
+  const mtpOldText = buildMtpRichText(text.oldText);
+  return mtpText && mtpOldText ? new GramJs.TextDiff({ text: mtpText, oldText: mtpOldText }) : undefined;
 }
 
 function buildNestedRichText(

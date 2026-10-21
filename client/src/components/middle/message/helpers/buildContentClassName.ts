@@ -51,7 +51,7 @@ export function buildContentClassName(
   const {
     photo = paidMediaPhoto, video = paidMediaVideo,
     audio, voice, document, contact, location, invoice, storyData,
-    giveaway, giveawayResults,
+    giveaway, giveawayResults, richMessage,
   } = content;
   const text = album?.hasMultipleCaptions ? undefined : getMessageContent(album?.captionMessage || message).text;
   const hasFactCheck = Boolean(message.factCheck?.text);
@@ -64,7 +64,7 @@ export function buildContentClassName(
   const pollMedia = poll?.attachedMedia;
   const isMedia = storyData || photo || video || location || invoice?.extendedMedia || paidMedia
     || pollMedia?.photo || pollMedia?.video || pollMedia?.location;
-  const hasText = text || location?.mediaType === 'venue' || isGeoLiveActive || hasFactCheck || poll;
+  const hasText = text || Boolean(richMessage) || location?.mediaType === 'venue' || isGeoLiveActive || hasFactCheck || poll;
   const isMediaWithNoText = isMedia && !hasText;
   const hasInlineKeyboard = Boolean(message.inlineButtons);
   const isViaBot = Boolean(message.viaBotId || message.guestChatViaId);

@@ -1,5 +1,6 @@
 import type { FC } from '../../../lib/teact/teact';
 import {
+  beginHeavyAnimation,
   memo, useEffect, useMemo,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
@@ -22,6 +23,7 @@ import { IS_APP, IS_MAC_OS } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
 import captureEscKeyListener from '../../../util/captureEscKeyListener';
 import { formatDateToString } from '../../../util/dates/oldDateFormat';
+import { setIsLeftColumnCollapsed, useIsLeftColumnCollapsed } from '../../../util/leftColumnCollapsed';
 
 import useAppLayout from '../../../hooks/useAppLayout';
 import useConnectionStatus from '../../../hooks/useConnectionStatus';
@@ -245,13 +247,58 @@ const LeftMainHeader = ({
     );
   }, [globalSearchChatId, selectedSearchDate]);
 
+  const isCollapsed = useIsLeftColumnCollapsed();
+
+  const handleExpand = useLastCallback(() => {
+    document.body.classList.add('is-animating-left-column');
+    document.documentElement.classList.add('is-animating-left-column');
+    const endHeavy = beginHeavyAnimation(350);
+
+    const leftCol = document.getElementById('LeftColumn');
+    const saved = parseFloat(document.documentElement.style.getPropertyValue('--saved-left-column-width'));
+    const isProfileOpen = typeof document !== 'undefined' && Boolean(
+      document.getElementById('Main')?.classList.contains('right-column-open')
+      && !document.getElementById('Main')?.classList.contains('right-column-closing')
+    );
+    const rem = (typeof document !== 'undefined' && parseFloat(getComputedStyle(document.documentElement).fontSize)) || 16;
+    const maxExpandedWidth = isProfileOpen ? Math.round(23 * rem) : Math.round(30 * rem);
+    const normalWidth = Math.min(maxExpandedWidth, Math.max(260, (saved && saved >= 260 && saved <= maxExpandedWidth) ? saved : (isProfileOpen ? maxExpandedWidth : 432)));
+
+    setIsLeftColumnCollapsed(false, true);
+    if (leftCol) {
+      leftCol.classList.remove('is-collapsed');
+      leftCol.style.width = `${normalWidth}px`;
+      leftCol.style.setProperty('--left-column-width', `${normalWidth}px`);
+    }
+    document.documentElement.classList.remove('left-column-is-collapsed');
+    document.documentElement.style.setProperty('--saved-left-column-width', `${normalWidth}px`);
+    document.documentElement.style.setProperty('--left-column-width', `${normalWidth}px`);
+    document.documentElement.removeAttribute('data-left-column-collapsed');
+
+    setTimeout(() => {
+      document.body.classList.remove('is-animating-left-column');
+      document.documentElement.classList.remove('is-animating-left-column');
+      endHeavy();
+    }, 330);
+  });
+
   return (
-    <div className="LeftMainHeader">
-      <div
-        id="LeftMainHeader"
-        className="left-header"
-        data-tauri-drag-region={IS_WITH_WINDOW_BUTTONS ? true : undefined}
-      >
+    <div
+      id="LeftMainHeader"
+      className={buildClassName('left-header', 'LeftMainHeader', isCollapsed && 'is-collapsed')}
+      data-tauri-drag-region={IS_WITH_WINDOW_BUTTONS ? true : undefined}
+    >
+        <Button
+          round
+          ripple={!isMobile}
+          size="smaller"
+          color="translucent"
+          ariaLabel={oldLang('Open')}
+          onClick={handleExpand}
+          className="collapsed-expand-btn"
+        >
+          <Icon name="arrow-right" className="collapsed-expand-icon" />
+        </Button>
         {lang.isRtl && <div className="DropdownMenuFiller" />}
         <MainMenuDropdown
           trigger={MainButton}
@@ -312,7 +359,6 @@ const LeftMainHeader = ({
           />
         </ShowTransition>
       </div>
-    </div>
   );
 };
 

@@ -15,6 +15,10 @@
     object-fit: cover;
   }
 
+  video.full-media {
+    transform: translateZ(0);
+  }
+
   .full-media.with-blurred-bg {
     position: relative;
     border-radius: 0 !important;
@@ -242,7 +246,7 @@
   height: calc(100% - var(--extra-height, 0px) + var(--story-ribbon-height)) !important;
 
   &.open, &.closing {
-    transition: transform 250ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transition: transform var(--layer-transition);
   }
 
   &.open {
@@ -279,4 +283,75 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+@property --color-background { syntax: '<color>'; inherits: true; initial-value: #16171a; }
+@property --color-background-secondary { syntax: '<color>'; inherits: true; initial-value: #212328; }
+@property --color-background-secondary-accent { syntax: '<color>'; inherits: true; initial-value: #292c33; }
+@property --color-background-sidebar { syntax: '<color>'; inherits: true; initial-value: #1a1b1f; }
+@property --color-background-selected { syntax: '<color>'; inherits: true; initial-value: #2a2e37; }
+@property --color-borders { syntax: '<color>'; inherits: true; initial-value: #2a2d34; }
+@property --color-dividers { syntax: '<color>'; inherits: true; initial-value: #24272e; }
+@property --color-text { syntax: '<color>'; inherits: true; initial-value: #f3f4f6; }
+@property --color-links { syntax: '<color>'; inherits: true; initial-value: #58a6ff; }
+@property --color-text-secondary { syntax: '<color>'; inherits: true; initial-value: #9da7b7; }
+@property --color-primary { syntax: '<color>'; inherits: true; initial-value: #3b82f6; }
+@property --color-send-button { syntax: '<color>'; inherits: true; initial-value: #3b82f6; }
+@property --color-icon-buttons { syntax: '<color>'; inherits: true; initial-value: #9da7b7; }
+@property --color-text-meta-colored { syntax: '<color>'; inherits: true; initial-value: #58a6ff; }
+@property --color-background-own { syntax: '<color>'; inherits: true; initial-value: #1e3a5f; }
+@property --color-chat-active { syntax: '<color>'; inherits: true; initial-value: #2b3d58; }
+@property --color-active { syntax: '<color>'; inherits: true; initial-value: #3b82f6; }
+@property --color-interactive-active { syntax: '<color>'; inherits: true; initial-value: #3b82f6; }
+@property --accent-color { syntax: '<color>'; inherits: true; initial-value: #3b82f6; }
+
+:root {
+  transition:
+    --color-background 0.35s cubic-bezier(0.33, 1, 0.68, 1),
+    --color-background-secondary 0.35s cubic-bezier(0.33, 1, 0.68, 1),
+    --color-background-secondary-accent 0.35s cubic-bezier(0.33, 1, 0.68, 1),
+    --color-background-sidebar 0.35s cubic-bezier(0.33, 1, 0.68, 1),
+    --color-background-selected 0.35s cubic-bezier(0.33, 1, 0.68, 1),
+    --color-borders 0.35s cubic-bezier(0.33, 1, 0.68, 1),
+    --color-dividers 0.35s cubic-bezier(0.33, 1, 0.68, 1),
+    --color-text 0.35s cubic-bezier(0.33, 1, 0.68, 1),
+    --color-links 0.35s cubic-bezier(0.33, 1, 0.68, 1),
+    --color-text-secondary 0.35s cubic-bezier(0.33, 1, 0.68, 1),
+    --color-primary 0.35s cubic-bezier(0.33, 1, 0.68, 1),
+    --color-send-button 0.35s cubic-bezier(0.33, 1, 0.68, 1),
+    --color-icon-buttons 0.35s cubic-bezier(0.33, 1, 0.68, 1),
+    --color-text-meta-colored 0.35s cubic-bezier(0.33, 1, 0.68, 1),
+    --color-background-own 0.35s cubic-bezier(0.33, 1, 0.68, 1),
+    --color-chat-active 0.35s cubic-bezier(0.33, 1, 0.68, 1),
+    --color-active 0.35s cubic-bezier(0.33, 1, 0.68, 1),
+    --color-interactive-active 0.35s cubic-bezier(0.33, 1, 0.68, 1),
+    --accent-color 0.35s cubic-bezier(0.33, 1, 0.68, 1) !important;
+}
+
+body,
+#root,
+#Main,
+#LeftColumn,
+#MiddleColumn,
+#RightColumn,
+.ListItem,
+.ListItem-button,
+.chat-item,
+.Message,
+.message-content,
+.bubble,
+.sidebar-header,
+.chat-header,
+.Button,
+.color-field-preview,
+.theme-preview-card,
+.folder-pill,
+.tabs-tab,
+.chat-background,
+.Composer,
+.messages-layout {
+  transition: background-color 0.35s cubic-bezier(0.33, 1, 0.68, 1),
+              color 0.35s cubic-bezier(0.33, 1, 0.68, 1),
+              border-color 0.35s cubic-bezier(0.33, 1, 0.68, 1),
+              fill 0.35s cubic-bezier(0.33, 1, 0.68, 1) !important;
 }

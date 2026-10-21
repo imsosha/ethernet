@@ -555,7 +555,8 @@ const Message = ({
     }
   }, [isContextMenuOpen, disableContextMenuHint]);
 
-  const noAppearanceAnimation = appearanceOrder <= 0;
+  const isLocalReplaced = Boolean(message.previousLocalId);
+  const noAppearanceAnimation = appearanceOrder <= 0 || isLocalReplaced;
   const [isShown, markShown] = useFlag(noAppearanceAnimation);
   useEffect(() => {
     if (noAppearanceAnimation) {
@@ -568,8 +569,8 @@ const Message = ({
 
   useShowTransition({
     ref,
-    isOpen: isShown || isJustAdded,
-    noMountTransition: noAppearanceAnimation && !isJustAdded,
+    isOpen: isShown || isJustAdded || isLocalReplaced,
+    noMountTransition: (noAppearanceAnimation && !isJustAdded) || isLocalReplaced,
     className: false,
   });
 

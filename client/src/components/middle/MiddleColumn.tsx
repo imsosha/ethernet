@@ -169,6 +169,7 @@ type StateProps = {
   freezeAppealChat?: ApiChat;
   shouldBlockSendInMonoforum?: boolean;
   isUiReady?: boolean;
+  hasAudioPlayer?: boolean;
 };
 
 function isImage(item: DataTransferItem) {
@@ -244,6 +245,7 @@ function MiddleColumn({
   freezeAppealChat,
   shouldBlockSendInMonoforum,
   isUiReady,
+  hasAudioPlayer,
 }: OwnProps & StateProps) {
   const {
     openChat,
@@ -343,6 +345,13 @@ function MiddleColumn({
     updateFooterHeight();
 
     const observer = new ResizeObserver((entries) => {
+      if (
+        typeof document !== 'undefined'
+        && (document.body.classList.contains('is-resizing-left-column')
+          || document.body.classList.contains('is-animating-left-column'))
+      ) {
+        return;
+      }
       entries.forEach((entry) => syncFooterSlide(entry.target as HTMLElement));
     });
     middleColumn.querySelectorAll<HTMLElement>('.middle-column-footer').forEach((footer) => {
@@ -476,6 +485,7 @@ function MiddleColumn({
   const className = buildClassName(
     MASK_IMAGE_DISABLED ? 'mask-image-disabled' : 'mask-image-enabled',
     isUiReady && 'ui-ready',
+    hasAudioPlayer && 'has-audio-player',
   );
 
   const messagingDisabledClassName = buildClassName(
@@ -567,20 +577,22 @@ function MiddleColumn({
         />
       )}
       <div id="middle-column-portals" />
-      <AudioPlayer
-        className="island-player"
-        isHidden={hasActiveMiddleSearch || isRichInputExpanded || (isTablet && isLeftColumnShown)}
-        onPaneStateChange={onPlayerPaneStateChange}
-      />
-      {Boolean(renderingChatId && renderingThreadId) && (
-        <>
-          <div className="messages-layout" onDragEnter={renderingCanPost ? handleDragEnter : undefined}>
+      <div className="messages-layout" onDragEnter={renderingCanPost ? handleDragEnter : undefined}>
+        <AudioPlayer
+          className="island-player"
+          isHidden={hasActiveMiddleSearch || isRichInputExpanded || (isTablet && isLeftColumnShown)}
+          onPaneStateChange={onPlayerPaneStateChange}
+        />
+        {Boolean(renderingChatId && renderingThreadId) && (
+          <>
             <MiddleHeader
               chatId={renderingChatId!}
               threadId={renderingThreadId!}
               messageListType={renderingMessageListType!}
               isComments={isComments}
               isMobile={isMobile}
+              hasActiveMiddleSearch={Boolean(hasActiveMiddleSearch)}
+              hasAudioPlayer={hasAudioPlayer}
               getCurrentPinnedIndex={getCurrentPinnedIndex}
               getLoadingPinnedId={getLoadingPinnedId}
               onFocusPinnedMessage={handleFocusPinnedMessage}
@@ -682,10 +694,10 @@ function MiddleColumn({
                 {IS_TRANSLATION_SUPPORTED && <ChatLanguageModal isOpen={isChatLanguageModalOpen} />}
               </div>
             </Transition>
-          </div>
-          <MiddleSearch isActive={Boolean(hasActiveMiddleSearch)} />
-        </>
-      )}
+            <MiddleSearch isActive={Boolean(hasActiveMiddleSearch)} />
+          </>
+        )}
+      </div>
       {chatId && (
         <UnpinAllMessagesModal
           isOpen={isUnpinModalOpen}
@@ -719,7 +731,7 @@ export default memo(withGlobal<OwnProps>(
       messageLists, isLeftColumnShown, activeEmojiInteractions,
       seenByModal, reactorModal, shouldSkipHistoryAnimations,
       chatLanguageModal, privacySettingsNoticeModal,
-      uiReadyState, isRichInputExpanded,
+      uiReadyState, isRichInputExpanded, audioPlayer,
     } = selectTabState(global);
     const currentMessageList = selectCurrentMessageList(global);
     const { leftColumnWidth } = global;
@@ -747,6 +759,7 @@ export default memo(withGlobal<OwnProps>(
       activeEmojiInteractions,
       leftColumnWidth,
       isUiReady: uiReadyState >= 1,
+      hasAudioPlayer: Boolean(audioPlayer?.chatId && audioPlayer?.messageId),
     };
 
     if (!currentMessageList) {

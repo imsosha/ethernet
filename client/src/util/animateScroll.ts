@@ -205,7 +205,7 @@ function createMutateFunction(args: AnimateScrollArgs) {
 
       container.scrollTop = newScrollTop;
 
-      isAnimating = t < 1;
+      isAnimating = t < 1 && newScrollTop !== target;
 
       if (!isAnimating) {
         currentArgs = undefined;

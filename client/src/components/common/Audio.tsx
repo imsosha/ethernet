@@ -152,6 +152,8 @@ const Audio = ({
   const shouldLoad = isActivated || PRELOAD;
   const coverHash = getMediaHash(media, 'pictogram');
   const coverBlobUrl = useMedia(coverHash, false, ApiMediaFormat.BlobUrl);
+  const audioThumbnail = audio?.thumbnail?.dataUri;
+  const coverUrl = coverBlobUrl || audioThumbnail;
   const hasTtl = hasMessageTtl(message);
   const isInOneTimeModal = origin === AudioOrigin.OneTimeModal;
   const trackType = isVoice ? (hasTtl ? 'oneTimeVoice' : 'voice') : 'audio';
@@ -414,11 +416,11 @@ const Audio = ({
           ripple={!isMobile}
           size="smaller"
           className="toggle-play"
-          color={coverBlobUrl ? 'translucent-white' : 'primary'}
+          color={coverUrl ? 'translucent-white' : 'primary'}
           ariaLabel={isPlaying ? 'Pause audio' : 'Play audio'}
           onClick={handleButtonClick}
           isRtl={lang.isRtl}
-          backgroundImage={coverBlobUrl}
+          backgroundImage={coverUrl}
           nonInteractive={isInOneTimeModal}
         >
           {!isInOneTimeModal && <Icon name="play" />}

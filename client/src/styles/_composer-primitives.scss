@@ -1,8 +1,8 @@
 @use "mixins";
 
 :root {
-  --composer-pill-radius: 1.5rem;
-  --composer-control-radius: 1.25rem;
+  --composer-pill-radius: var(--border-radius-input, 1.5rem);
+  --composer-control-radius: var(--border-radius-buttons, 1.25rem);
   --composer-height: 3rem;
   --composer-embed-radius: 0.5rem;
   --composer-pill-padding: 0.25rem;

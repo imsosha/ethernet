@@ -58,6 +58,9 @@ export function modToCss(mod: HermesMod, themeName = 'Кастомная', custo
       if (v) {
         const cleanVal = String(v).replace(/\s*!important/g, '').trim();
         lines.push(`  ${k}: ${cleanVal};`);
+        if (k === '--color-background') {
+          lines.push(`  --theme-background-color: ${cleanVal};`);
+        }
         if (k === '--color-primary' && /^#[0-9a-fA-F]{6}$/.test(cleanVal)) {
           const r = parseInt(cleanVal.slice(1, 3), 16);
           const g = parseInt(cleanVal.slice(3, 5), 16);
@@ -82,9 +85,11 @@ export function modToCss(mod: HermesMod, themeName = 'Кастомная', custo
 
   if (mod.radii) {
     if (mod.radii.ui !== undefined) lines.push(`  --border-radius-ui: ${mod.radii.ui}px;`);
+    if (mod.radii.topbar !== undefined) lines.push(`  --border-radius-topbar: ${mod.radii.topbar}px;`);
     if (mod.radii.foldersSidebar !== undefined) lines.push(`  --border-radius-folders-sidebar: ${mod.radii.foldersSidebar / 16}rem;`);
     if (mod.radii.messages !== undefined) lines.push(`  --border-radius-messages: ${mod.radii.messages}px;`);
     if (mod.radii.buttons !== undefined) lines.push(`  --border-radius-buttons: ${mod.radii.buttons}px;`);
+    if (mod.radii.input !== undefined) lines.push(`  --border-radius-input: ${mod.radii.input}px;`);
     if (mod.radii.avatars !== undefined) lines.push(`  --border-radius-avatars: ${mod.radii.avatars}%;`);
   }
 
@@ -130,6 +135,25 @@ export function modToCss(mod: HermesMod, themeName = 'Кастомная', custo
   if (mod.messageAlignOther) {
     lines.push(`  --message-align-other: ${mod.messageAlignOther};`);
   }
+  if (mod.profileOpenMode) {
+    lines.push(`  --profile-open-mode: ${mod.profileOpenMode};`);
+  }
+  if (mod.mediaMessageWidth) {
+    lines.push(`  --media-message-width: ${mod.mediaMessageWidth};`);
+  }
+  if (mod.hideTitlebar) {
+    lines.push('  --hide-titlebar: true;');
+  }
+
+  if (mod.wallpaperFile) {
+    if (mod.wallpaperKind === 'color' || mod.wallpaperFile.startsWith('#') || mod.wallpaperFile.startsWith('rgb')) {
+      lines.push(`  --custom-background: linear-gradient(${mod.wallpaperFile}, ${mod.wallpaperFile});`);
+    } else if (mod.wallpaperFile.startsWith('data:')) {
+      lines.push(`  --custom-background: url('${mod.wallpaperFile}');`);
+    } else {
+      lines.push(`  --custom-background: url('/ethernet/wallpapers/${mod.wallpaperFile}');`);
+    }
+  }
 
   lines.push(`}`);
 
@@ -171,6 +195,8 @@ export function cssToMod(css: string): HermesMod {
       }
     } else if (key === '--border-radius-ui') {
       mod.radii!.ui = parseInt(rawVal, 10) || 16;
+    } else if (key === '--border-radius-topbar') {
+      mod.radii!.topbar = parseInt(rawVal, 10) || 24;
     } else if (key === '--border-radius-folders-sidebar') {
       const parsed = parseFloat(rawVal);
       mod.radii!.foldersSidebar = rawVal.endsWith('rem') ? Math.round(parsed * 16) : Math.round(parsed);
@@ -178,6 +204,8 @@ export function cssToMod(css: string): HermesMod {
       mod.radii!.messages = parseInt(rawVal, 10) || 15;
     } else if (key === '--border-radius-buttons') {
       mod.radii!.buttons = parseInt(rawVal, 10) || 12;
+    } else if (key === '--border-radius-input') {
+      mod.radii!.input = parseInt(rawVal, 10) || 24;
     } else if (key === '--border-radius-avatars') {
       mod.radii!.avatars = parseInt(rawVal, 10) || 50;
     } else if (key === '--blur-strength') {
@@ -208,8 +236,190 @@ export function cssToMod(css: string): HermesMod {
       mod.messageAlignOwn = rawVal as any;
     } else if (key === '--message-align-other') {
       mod.messageAlignOther = rawVal as any;
+    } else if (key === '--profile-open-mode') {
+      mod.profileOpenMode = rawVal as any;
+    } else if (key === '--media-message-width') {
+      mod.mediaMessageWidth = rawVal as any;
+    } else if (key === '--hide-titlebar') {
+      mod.hideTitlebar = rawVal === 'true';
+    }
+  }
+
+  const wallpaperMatch = css.match(/\/\*\s*@wallpaper\s*(\{[\s\S]*?\})\s*\*\//i);
+  if (wallpaperMatch) {
+    try {
+      const parsedWp = JSON.parse(wallpaperMatch[1]);
+      if (parsedWp && parsedWp.file) {
+        mod.wallpaperFile = parsedWp.file;
+        mod.wallpaperKind = parsedWp.kind || 'image';
+        mod.wallpaperOriginalPath = parsedWp.originalPath;
+      }
+    } catch {}
+  }
+  if (!mod.wallpaperFile) {
+    const bgMatch = css.match(/--custom-background\s*:\s*url\s*\(\s*['"]?(data:[^'"]+)['"]?\s*\)/i);
+    if (bgMatch) {
+      mod.wallpaperFile = bgMatch[1];
+      mod.wallpaperKind = 'image';
     }
   }
 
   return mod;
 }
+
+export type UniversalThemePlugin = {
+  id: string;
+  name: string;
+  version?: string;
+  author?: string;
+  description?: string;
+  icon?: string;
+  code: string;
+  permissions?: string[];
+};
+
+export type UniversalEthPackage = {
+  format: 'ethernet-v1' | 'ethernet-theme-v1';
+  type?: 'theme' | 'plugin' | 'bundle';
+  id?: string;
+  name: string;
+  version?: string;
+  author?: string;
+  description?: string;
+  icon?: string;
+  // Свойства темы
+  css?: string;
+  mod?: HermesMod;
+  wallpaper?: any;
+  // Свойства отдельного плагина
+  code?: string;
+  permissions?: string[];
+  themeDependency?: string;
+  requiredForTheme?: string;
+  // Вложенные зависимые плагины (для тем и бандлов)
+  plugins?: UniversalThemePlugin[];
+};
+
+export type UniversalThemePackage = UniversalEthPackage;
+
+export function parseEthPackage(rawContent: string, defaultName = 'Пакет'): UniversalEthPackage & {
+  mod?: HermesMod;
+  css: string;
+  plugins: UniversalThemePlugin[];
+} {
+  const trimmed = rawContent.trim();
+  if (trimmed.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      const mod = parsed.mod || (parsed.css ? cssToMod(parsed.css) : undefined);
+      return {
+        format: parsed.format || 'ethernet-v1',
+        type: parsed.type || (parsed.code && !parsed.css ? 'plugin' : 'theme'),
+        id: parsed.id,
+        name: parsed.name || defaultName,
+        version: parsed.version,
+        author: parsed.author,
+        description: parsed.description,
+        icon: parsed.icon,
+        css: parsed.css || (mod ? modToCss(mod, parsed.name || defaultName) : ''),
+        code: parsed.code,
+        permissions: Array.isArray(parsed.permissions) ? parsed.permissions : undefined,
+        themeDependency: parsed.themeDependency || parsed.requiredForTheme,
+        requiredForTheme: parsed.requiredForTheme || parsed.themeDependency,
+        mod,
+        wallpaper: parsed.wallpaper,
+        plugins: Array.isArray(parsed.plugins) ? parsed.plugins : [],
+      };
+    } catch {}
+  }
+
+  // Если передан чистый CSS файл
+  const mod = cssToMod(trimmed);
+  const nameMatch = trimmed.match(/@name[:=\s]+([^\r\n*]+)/i) || trimmed.match(/\/\*\s*Ethernet Telegram Theme:\s*([^\r\n*]+)/i);
+  const verMatch = trimmed.match(/(?:@version|--theme-version)["':=\s]+([0-9a-zA-Z._-]+)/i);
+  const authMatch = trimmed.match(/@author[:=\s]+([^\r\n*]+)/i);
+  const descMatch = trimmed.match(/@description[:=\s]+([^\r\n*]+)/i);
+  const iconMatch = trimmed.match(/@icon\s+([^\r\n]+)/i);
+  const pluginsMatch = trimmed.match(/@plugins\s+(\[[\s\S]*?\])/i);
+
+  let plugins: UniversalThemePlugin[] = [];
+  if (pluginsMatch) {
+    try {
+      const parsed = JSON.parse(pluginsMatch[1]);
+      if (Array.isArray(parsed)) plugins = parsed;
+    } catch {}
+  }
+
+  const wallpaperMatch = trimmed.match(/@wallpaper\s+(\{[\s\S]*?\})/i);
+  let wallpaper: any = undefined;
+  if (wallpaperMatch) {
+    try {
+      wallpaper = JSON.parse(wallpaperMatch[1]);
+    } catch {}
+  }
+  if (!wallpaper) {
+    const bgMatch = trimmed.match(/--custom-background\s*:\s*url\s*\(\s*['"]?(data:[^'"]+)['"]?\s*\)/i);
+    if (bgMatch) {
+      wallpaper = {
+        file: bgMatch[1],
+        kind: 'image',
+        slug: 'embedded',
+      };
+    }
+  }
+
+  return {
+    format: 'ethernet-v1',
+    type: 'theme',
+    name: nameMatch ? nameMatch[1].trim() : defaultName,
+    version: verMatch ? verMatch[1].trim().replace(/^[vV]+/, '') : undefined,
+    author: authMatch ? authMatch[1].trim() : undefined,
+    description: descMatch ? descMatch[1].trim() : undefined,
+    icon: iconMatch ? iconMatch[1].trim().replace(/\s*\*\/.*$/, '') : undefined,
+    css: trimmed,
+    mod,
+    wallpaper,
+    plugins,
+  };
+}
+
+export const parseUniversalTheme = parseEthPackage;
+
+export function buildEthPackage(params: {
+  type?: 'theme' | 'plugin' | 'bundle';
+  id?: string;
+  name: string;
+  version?: string;
+  author?: string;
+  description?: string;
+  icon?: string;
+  css?: string;
+  mod?: HermesMod;
+  wallpaper?: any;
+  code?: string;
+  permissions?: string[];
+  themeDependency?: string;
+  plugins?: UniversalThemePlugin[];
+}): string {
+  const pkg: UniversalEthPackage = {
+    format: 'ethernet-v1',
+    type: params.type || (params.code && !params.css ? 'plugin' : 'theme'),
+    id: params.id,
+    name: params.name,
+    version: params.version || '1.0.0',
+    author: params.author || 'User',
+    description: params.description || '',
+    icon: params.icon || undefined,
+    css: params.css,
+    mod: params.mod,
+    wallpaper: params.wallpaper,
+    code: params.code,
+    permissions: params.permissions,
+    themeDependency: params.themeDependency,
+    plugins: params.plugins || [],
+  };
+  return JSON.stringify(pkg, null, 2);
+}
+
+export const buildUniversalThemeJson = buildEthPackage;
+

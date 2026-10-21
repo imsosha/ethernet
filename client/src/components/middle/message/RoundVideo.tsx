@@ -25,6 +25,7 @@ import { useThrottledSignal } from '../../../hooks/useAsyncResolvers';
 import useFlag from '../../../hooks/useFlag';
 import { useIsIntersecting } from '../../../hooks/useIntersectionObserver';
 import useLastCallback from '../../../hooks/useLastCallback';
+import useMedia from '../../../hooks/useMedia';
 import useMediaTransition from '../../../hooks/useMediaTransition';
 import useMediaWithLoadProgress from '../../../hooks/useMediaWithLoadProgress';
 import usePreviousDeprecated from '../../../hooks/usePreviousDeprecated';
@@ -92,8 +93,19 @@ const RoundVideo: FC<OwnProps> = ({
   const video = message.content.video!;
   const isMediaUnread = message.isMediaUnread;
 
-  const [isLoadAllowed, setIsLoadAllowed] = useState(canAutoLoad);
-  const shouldLoad = Boolean(isLoadAllowed && isIntersecting);
+  const [isLoadAllowed, setIsLoadAllowed] = useState(true);
+  const [isPlayPending, setIsPlayPending] = useState(false);
+
+  useEffect(() => {
+    if (canAutoLoad) {
+      setIsLoadAllowed(true);
+    }
+  }, [canAutoLoad]);
+
+  const previewMediaHash = getVideoMediaHash(video, 'preview');
+  const previewBlobUrl = useMedia(previewMediaHash, false);
+
+  const shouldLoad = Boolean(isLoadAllowed || isPlayPending);
   const { mediaData, loadProgress } = useMediaWithLoadProgress(
     getVideoMediaHash(video, 'inline'),
     !shouldLoad,
@@ -111,13 +123,14 @@ const RoundVideo: FC<OwnProps> = ({
   const hasTtl = hasMessageTtl(message);
   const isInOneTimeModal = origin === 'oneTimeModal';
   const shouldRenderSpoiler = hasTtl && !isInOneTimeModal;
+
   const thumbDataUri = useThumbnail(message);
   const hasThumb = Boolean(thumbDataUri);
   const noThumb = !hasThumb || isPlayerReady || shouldRenderSpoiler;
   const thumbRef = useBlurredMediaThumbRef(video, noThumb);
   useMediaTransition({ hasMediaData: !noThumb, ref: thumbRef });
 
-  const isTransferring = (isLoadAllowed && !isPlayerReady) || isDownloading;
+  const isTransferring = (isLoadAllowed && !isPlayerReady && !fullMediaData) || isDownloading;
   const wasLoadDisabled = usePreviousDeprecated(isLoadAllowed) === false;
 
   const {
@@ -140,7 +153,10 @@ const RoundVideo: FC<OwnProps> = ({
       return;
     }
 
-    const playerEl = playerRef.current!;
+    const playerEl = playerRef.current;
+    if (!playerEl) {
+      return;
+    }
     setProgress(playerEl.currentTime / playerEl.duration);
   }, [setProgress, isActivated, getThrottledProgress]);
 
@@ -153,7 +169,7 @@ const RoundVideo: FC<OwnProps> = ({
     circleRef.current.setAttribute('stroke-dashoffset', strokeDashOffset.toString());
   }, [isActivated, getThrottledProgress]);
 
-  const shouldPlay = Boolean(fullMediaData && isIntersecting);
+  const shouldPlay = Boolean(fullMediaData && (isActivated || isIntersecting));
 
   const stopPlaying = useLastCallback(() => {
     if (!playerRef.current) {
@@ -171,7 +187,10 @@ const RoundVideo: FC<OwnProps> = ({
   });
 
   const togglePlaying = useLastCallback(() => {
-    const playerEl = playerRef.current!;
+    const playerEl = playerRef.current;
+    if (!playerEl) {
+      return;
+    }
     if (isActivated) {
       if (playerEl.paused) {
         safePlay(playerEl);
@@ -203,8 +222,8 @@ const RoundVideo: FC<OwnProps> = ({
     }
 
     if (!fullMediaData) {
-      setIsLoadAllowed((isAllowed) => !isAllowed);
-
+      setIsLoadAllowed(true);
+      setIsPlayPending(true);
       return;
     }
 
@@ -221,6 +240,13 @@ const RoundVideo: FC<OwnProps> = ({
 
     togglePlaying();
   });
+
+  useEffect(() => {
+    if (fullMediaData && isPlayPending) {
+      setIsPlayPending(false);
+      togglePlaying();
+    }
+  }, [fullMediaData, isPlayPending, togglePlaying]);
 
   useEffect(() => {
     if (onReadMedia && isMediaUnread && isActivated) {
@@ -306,11 +332,21 @@ const RoundVideo: FC<OwnProps> = ({
         </div>
       )}
       {!shouldRenderSpoiler && (
-        <canvas
-          ref={thumbRef}
-          className="thumbnail"
-          style={`width: ${ROUND_VIDEO_DIMENSIONS_PX}px; height: ${ROUND_VIDEO_DIMENSIONS_PX}px`}
-        />
+        <>
+          <canvas
+            ref={thumbRef}
+            className="thumbnail"
+            style={`width: ${ROUND_VIDEO_DIMENSIONS_PX}px; height: ${ROUND_VIDEO_DIMENSIONS_PX}px`}
+          />
+          {previewBlobUrl && !isPlayerReady && (
+            <img
+              src={previewBlobUrl}
+              className="thumbnail preview"
+              alt=""
+              draggable={false}
+            />
+          )}
+        </>
       )}
       <div className="progress">
         {isActivated && (
@@ -329,13 +365,23 @@ const RoundVideo: FC<OwnProps> = ({
         )}
       </div>
       {shouldRenderSpinner && (
-        <div ref={spinnerRef} className={buildClassName('media-loading', styles.loading)}>
+        <div ref={spinnerRef} className={buildClassName('media-loading', styles.loading, 'open')}>
           <ProgressSpinner progress={isDownloading ? downloadProgress : loadProgress} />
         </div>
       )}
       {shouldRenderSpoiler && !shouldRenderSpinner && renderPlayWrapper()}
-      {!fullMediaData && !isLoadAllowed && (
-        <Icon name="download" className={buildClassName(styles.controlButton, styles.downloadButton)} />
+      {!fullMediaData && !shouldRenderSpinner && !shouldRenderSpoiler && (
+        <div className="play-wrapper">
+          <Button
+            color="dark"
+            round
+            size="smaller"
+            className="play"
+            nonInteractive
+            iconName="play"
+            iconClassName="play-icon"
+          />
+        </div>
       )}
       {!isInOneTimeModal && (
         <MediaBadge
@@ -344,7 +390,7 @@ const RoundVideo: FC<OwnProps> = ({
           )}
         >
           {isActivated ? formatMediaDuration(currentTime) : formatMediaDuration(video.duration)}
-          {(!isActivated || playerRef.current!.paused) && <Icon name="muted" className="muted-icon" />}
+          {(!isActivated || playerRef.current?.paused) && <Icon name="muted" className="muted-icon" />}
         </MediaBadge>
       )}
       {canTranscribe && (

@@ -5,8 +5,7 @@ import { Bundles } from '../../../util/moduleLoader';
 import useModuleLoader from '../../../hooks/useModuleLoader';
 
 const MiddleSearchAsync = (props: OwnProps) => {
-  const { isActive } = props;
-  const MiddleSearch = useModuleLoader(Bundles.Extra, 'MiddleSearch', !isActive, true);
+  const MiddleSearch = useModuleLoader(Bundles.Extra, 'MiddleSearch', false, true);
 
   return MiddleSearch ? <MiddleSearch {...props} /> : undefined;
 };

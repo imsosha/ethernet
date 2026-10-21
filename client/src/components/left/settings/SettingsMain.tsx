@@ -132,7 +132,7 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
             onClick={() => openSettingsScreen({ screen: SettingsScreens.General })}
           >
             <span className="title">{lang('TelegramGeneralSettingsViewController')}</span>
-            <span className="subtitle">{lang('SettingsGeneralDesc')}</span>
+            <span className="subtitle">{getEthernetString(lang, 'SettingsGeneralDescNoWallpaper')}</span>
           </ListItem>
 
           <ListItem

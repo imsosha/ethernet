@@ -18,9 +18,11 @@ import { selectSharedSettings } from '../../global/selectors/sharedState';
 import {
   IS_APP, IS_FIREFOX, IS_MAC_OS, IS_TOUCH_ENV,
 } from '../../util/browser/windowEnvironment';
+import buildClassName from '../../util/buildClassName';
 import captureEscKeyListener from '../../util/captureEscKeyListener';
 import { resolveTransitionName } from '../../util/resolveTransitionName';
 import { captureControlledSwipe } from '../../util/swipeController';
+import { getIsLeftColumnCollapsed, setIsLeftColumnCollapsed, useIsLeftColumnCollapsed } from '../../util/leftColumnCollapsed';
 import { isComposerHasSelection } from '../middle/composer/helpers/selection';
 
 import useFoldersReducer from '../../hooks/reducers/useFoldersReducer';
@@ -594,10 +596,61 @@ function LeftColumn({
     }
   }
 
+  const isSubmenuOpen = contentType !== ContentType.Main
+    || contentKey === LeftColumnContent.Contacts
+    || Boolean(searchQuery);
+
+  const isChatList = !isSubmenuOpen;
+
+  const isLeftColumnCollapsed = useIsLeftColumnCollapsed();
+
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.setAttribute('data-is-chat-list', isChatList ? 'true' : 'false');
+    }
+    document.documentElement.setAttribute('data-left-column-is-chat-list', isChatList ? 'true' : 'false');
+  }, [isChatList, ref]);
+
+  useSyncEffect(() => {
+    if (!ref.current) return;
+    if (
+      typeof document !== 'undefined'
+      && (document.body.classList.contains('is-resizing-left-column')
+        || document.body.classList.contains('is-animating-left-column'))
+    ) {
+      return;
+    }
+
+    if (isLeftColumnCollapsed && isChatList) {
+      ref.current.style.width = '4.25rem';
+      ref.current.style.minWidth = '4.25rem';
+      ref.current.style.maxWidth = '4.25rem';
+      ref.current.style.setProperty('--left-column-width', '4.25rem');
+      document.documentElement.style.setProperty('--left-column-width', '4.25rem');
+    } else {
+      const isProfileOpen = typeof document !== 'undefined' && Boolean(
+        document.getElementById('Main')?.classList.contains('right-column-open')
+        && !document.getElementById('Main')?.classList.contains('right-column-closing')
+      );
+      const rem = (typeof document !== 'undefined' && parseFloat(getComputedStyle(document.documentElement).fontSize)) || 16;
+      const maxExpandedWidth = isProfileOpen ? Math.round(23 * rem) : Math.round(30 * rem);
+
+      const saved = parseFloat(document.documentElement.style.getPropertyValue('--saved-left-column-width'));
+      const targetWidth = (saved && saved >= 260 && saved <= maxExpandedWidth) ? `${saved}px` : (isProfileOpen ? `${maxExpandedWidth}px` : '27rem');
+      ref.current.style.width = targetWidth;
+      ref.current.style.minWidth = '16.25rem';
+      ref.current.style.maxWidth = `${maxExpandedWidth}px`;
+      ref.current.style.setProperty('--left-column-width', targetWidth);
+      document.documentElement.style.setProperty('--left-column-width', targetWidth);
+    }
+  }, [isLeftColumnCollapsed, isChatList, ref]);
+
+  const transitionName = resolveTransitionName('layers', animationLevel, shouldSkipHistoryAnimations);
+
   return (
     <Transition
       ref={ref}
-      name={resolveTransitionName('layers', animationLevel, shouldSkipHistoryAnimations)}
+      name={transitionName}
       renderCount={RENDER_COUNT}
       activeKey={contentType}
       shouldCleanup
@@ -605,6 +658,10 @@ function LeftColumn({
       shouldWrap
       wrapExceptionKey={ContentType.Main}
       id="LeftColumn"
+      className={buildClassName(
+        isChatList ? 'is-chat-list' : 'has-opened-content',
+        isLeftColumnCollapsed && isChatList && 'is-collapsed',
+      )}
       withSwipeControl
     >
       {renderContent}

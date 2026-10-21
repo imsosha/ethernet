@@ -84,7 +84,7 @@ const NetworkGeoCard: FC<{ className?: string }> = ({ className }) => {
                 {getCountryFlag(geoInfo?.countryCode)}
               </span>
               <span>
-                {geoInfo?.country || (isLoading ? getEthernetString(lang, 'Checking') : 'Локальная сеть')}
+                {geoInfo?.country || (isLoading ? getEthernetString(lang, 'Checking') : getEthernetString(lang, 'NetworkLocal'))}
               </span>
             </span>
           </div>

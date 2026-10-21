@@ -7,6 +7,7 @@ const path = require('path');
 const ethernetSettings = require('./ethernet-settings.cjs');
 const proxyEngine = require('./proxy-engine.cjs');
 const proxyParser = require('./proxy-parser.cjs');
+const systemMediaService = require('./system-media-service.cjs');
 
 const isPackaged = app ? app.isPackaged : false;
 const ROOT = process.env.PORTABLE_EXECUTABLE_DIR || (process.env.APPIMAGE ? path.dirname(process.env.APPIMAGE) : (isPackaged ? path.dirname(process.execPath) : path.join(__dirname, '..', '..')));
@@ -48,7 +49,141 @@ function isSafeMediaBuffer(buf) {
   if (buf.length >= 8 && buf.toString('ascii', 4, 8) === 'ftyp') return true;
   // WEBM / MKV: 1A 45 DF A3
   if (buf[0] === 0x1a && buf[1] === 0x45 && buf[2] === 0xdf && buf[3] === 0xa3) return true;
+  // SVG: contains <svg or starts with <?xml
+  const str = buf.slice(0, 1024).toString('utf8').trim().toLowerCase();
+  if (str.includes('<svg') || str.startsWith('<?xml')) return true;
   return false;
+}
+
+const DANGEROUS_PERMISSIONS = new Set([
+  'credentials',
+  'telegram.updates',
+  'network.intercept',
+  'network.raw',
+  'telegram.store',
+  'desktop.ipc',
+]);
+
+function parseDeclaredPermissions(code, manifest) {
+  const perms = new Set();
+  if (manifest && Array.isArray(manifest.permissions)) {
+    manifest.permissions.forEach((p) => {
+      if (typeof p === 'string' && p.trim()) perms.add(p.trim());
+    });
+  }
+  if (code && typeof code === 'string') {
+    const matches = code.matchAll(/@permissions?\s+([^\r\n*]+)/gi);
+    for (const match of matches) {
+      if (match[1]) {
+        match[1].split(/[, ]+/).forEach((p) => {
+          const trimmed = p.trim();
+          if (trimmed) perms.add(trimmed);
+        });
+      }
+    }
+  }
+  return Array.from(perms);
+}
+
+function cleanVersion(ver) {
+  if (!ver || typeof ver !== 'string') return '';
+  let v = ver.trim();
+  v = v.replace(/^[:= ]+/, '').trim();
+  v = v.replace(/\s*\*\/.*$/, '').trim();
+  v = v.replace(/^[vV]+/, '').trim();
+  return v;
+}
+
+function extractSvgIcon(text) {
+  if (!text || typeof text !== 'string') return '';
+  const iconDirective = text.match(/@icon\s+([^\r\n]+)/i);
+  if (iconDirective) {
+    const raw = iconDirective[1].trim().replace(/\s*\*\/.*$/, '').trim();
+    if (raw.startsWith('<svg') || raw.startsWith('data:image/svg+xml')) return raw;
+  }
+  const svgBlock = text.match(/<svg[\s\S]*?<\/svg>/i);
+  if (svgBlock) {
+    return svgBlock[0].trim();
+  }
+  return '';
+}
+
+function parsePluginMetadata(code) {
+  const meta = {};
+  if (!code || typeof code !== 'string') return meta;
+  const nameMatch = code.match(/@name[:=\s]+([^\r\n*]+)/i);
+  if (nameMatch) meta.name = nameMatch[1].trim();
+  const descMatch = code.match(/@description[:=\s]+([^\r\n*]+)/i);
+  if (descMatch) meta.description = descMatch[1].trim();
+  const verMatch = code.match(/(?:@version|--plugin-version)["':=\s]+([0-9a-zA-Z._-]+)/i)
+    || code.match(/"version"\s*:\s*"([^"]+)"/i);
+  if (verMatch) meta.version = cleanVersion(verMatch[1]);
+  const authMatch = code.match(/@author[:=\s]+([^\r\n*]+)/i);
+  if (authMatch) meta.author = authMatch[1].trim();
+  const icon = extractSvgIcon(code);
+  if (icon) meta.icon = icon;
+  const themeDepMatch = code.match(/@(?:themeDependency|requiredForTheme)[:=\s]+([^\r\n*]+)/i);
+  if (themeDepMatch) meta.themeDependency = themeDepMatch[1].trim();
+  return meta;
+}
+
+function analyzePluginSecurity(code, declaredPermissions = []) {
+  const errors = [];
+  const warnings = [];
+  const permsSet = new Set(declaredPermissions);
+
+  if (!code || typeof code !== 'string') {
+    return { valid: false, errors: ['Код плагина пуст или не является строкой'] };
+  }
+
+  // 1. Проверка на грубые обходы песочницы (Strict Sandbox Violations)
+  if (/\beval\s*\(/.test(code)) {
+    errors.push('Использование функции eval() строго запрещено политикой безопасности песочницы.');
+  }
+  if (/\bFunction\s*\(/.test(code) || /new\s+Function\s*\(/.test(code)) {
+    errors.push('Динамическое создание функций (new Function) запрещено политикой безопасности песочницы.');
+  }
+  if (/\bprocess\.(env|versions|platform|arch|binding|mainModule)/.test(code)) {
+    errors.push('Прямой доступ к объекту процесса Node.js (process.*) запрещен.');
+  }
+  if (/\brequire\s*\(/.test(code)) {
+    errors.push('Вызов системного загрузчика require() запрещен внутри изолированного плагина.');
+  }
+  if (/(window\.)?(electronDesktop|ipcRenderer)\b/.test(code) && !permsSet.has('desktop.ipc')) {
+    errors.push('Обнаружена попытка прямого вызова Electron IPC без объявления разрешения "desktop.ipc".');
+  }
+
+  // 2. Доступ к учетным данным Telegram без разрешения credentials
+  const hasCredentialsPattern = /localStorage\s*(\[\s*['"`]user_auth['"`]|\.getItem\s*\(\s*['"`]user_auth['"`]|\.user_auth)/.test(code)
+    || /indexedDB\s*\.\s*open\s*\(\s*['"`]tt-auth/i.test(code)
+    || /sessionStorage\s*(\[\s*['"`]user_auth|\.getItem\s*\(\s*['"`]user_auth)/.test(code);
+  if (hasCredentialsPattern && !permsSet.has('credentials')) {
+    errors.push('Обнаружена попытка доступа к авторизационным ключам и токенам Telegram (user_auth) без запроса разрешения "credentials".');
+  }
+
+  // 3. Недекларированные вызовы сетевого и MTProto API:
+  if ((/\bbeforeRequest\b/.test(code) || /\bonRequest\b/.test(code)) && !permsSet.has('network.intercept')) {
+    errors.push('Плагин использует перехват исходящих сетевых запросов (beforeRequest / onRequest), но не объявил разрешение "network.intercept".');
+  }
+  if ((/\bonUpdate\b/.test(code) || /\bafterUpdate\b/.test(code)) && !permsSet.has('telegram.updates')) {
+    errors.push('Плагин перехватывает входящие события и сообщения Telegram (onUpdate / afterUpdate), но не объявил разрешение "telegram.updates".');
+  }
+  if ((/\bstore\.getGlobal\b/.test(code) || /\bstore\.getActions\b/.test(code)) && !permsSet.has('telegram.store')) {
+    errors.push('Плагин обращается к глобальному хранилищу Redux/Teact (store), но не объявил разрешение "telegram.store".');
+  }
+  if (/(fetch\s*\(\s*['"`]https?:\/\/|new\s+XMLHttpRequest|new\s+WebSocket)/.test(code) && !permsSet.has('network.raw')) {
+    errors.push('Плагин выполняет внешние сетевые запросы (HTTP/WebSocket), но не объявил разрешение "network.raw".');
+  }
+
+  const declaredDangerous = declaredPermissions.filter((p) => DANGEROUS_PERMISSIONS.has(p));
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings,
+    hasDangerousPermissions: declaredDangerous.length > 0,
+    dangerousPermissions: declaredDangerous,
+  };
 }
 
 function registerHermesFsHandlers() {
@@ -74,58 +209,149 @@ function registerHermesFsHandlers() {
   regHandle('hermes:themes-list', () => {
     ensureDirs();
     const activeTheme = ethernetSettings.getTheme();
-    return fs.readdirSync(THEMES_DIR)
-      .filter((f) => f.endsWith('.css'))
-      .map((f) => ({ name: f, active: activeTheme === f.replace(/\.css$/, '') }));
+    const files = fs.readdirSync(THEMES_DIR)
+      .filter((f) => f.endsWith('.css') || f.endsWith('.json') || f.endsWith('.eth') || f.endsWith('.eth-theme'));
+    return files.map((f) => {
+      const filePath = path.join(THEMES_DIR, f);
+      let content = '';
+      try {
+        content = fs.readFileSync(filePath, 'utf8');
+      } catch {}
+      const isJson = f.endsWith('.json') || f.endsWith('.eth') || f.endsWith('.eth-theme') || content.trim().startsWith('{');
+      let meta = {};
+      if (isJson) {
+        try {
+          const parsed = JSON.parse(content);
+          meta = {
+            name: parsed.name || f.replace(/\.(css|json|eth|eth-theme)$/, ''),
+            version: cleanVersion(parsed.version || ''),
+            author: parsed.author || '',
+            description: parsed.description || '',
+            icon: parsed.icon || '',
+            pluginsCount: Array.isArray(parsed.plugins) ? parsed.plugins.length : 0,
+            hasPlugins: Array.isArray(parsed.plugins) && parsed.plugins.length > 0,
+          };
+        } catch {}
+      } else {
+        const verMatch = content.match(/(?:@version|--theme-version)["':=\s]+([0-9a-zA-Z._-]+)/i);
+        const nameMatch = content.match(/@name[:=\s]+([^\r\n*]+)/i) || content.match(/\/\*\s*Ethernet Telegram Theme:\s*([^\r\n*]+)/i);
+        const authMatch = content.match(/@author[:=\s]+([^\r\n*]+)/i);
+        const descMatch = content.match(/@description[:=\s]+([^\r\n*]+)/i);
+        const iconMatch = extractSvgIcon(content);
+        const pluginsMatch = content.match(/@plugins\s+(\[[\s\S]*?\])/i);
+        let pluginsCount = 0;
+        if (pluginsMatch) {
+          try {
+            const parsed = JSON.parse(pluginsMatch[1]);
+            if (Array.isArray(parsed)) pluginsCount = parsed.length;
+          } catch {}
+        }
+        meta = {
+          name: nameMatch ? nameMatch[1].trim() : f.replace(/\.css$/, ''),
+          version: verMatch ? cleanVersion(verMatch[1]) : '',
+          author: authMatch ? authMatch[1].trim() : '',
+          description: descMatch ? descMatch[1].trim() : '',
+          icon: iconMatch || '',
+          pluginsCount,
+          hasPlugins: pluginsCount > 0,
+        };
+      }
+
+      const cleanRawName = f.replace(/\.(css|json|eth|eth-theme)$/, '');
+      return {
+        name: f,
+        rawName: cleanRawName,
+        displayName: meta.name || cleanRawName,
+        version: meta.version || '',
+        author: meta.author || '',
+        description: meta.description || '',
+        icon: meta.icon || '',
+        pluginsCount: meta.pluginsCount || 0,
+        hasPlugins: Boolean(meta.hasPlugins),
+        active: activeTheme === cleanRawName,
+      };
+    });
   });
 
   regHandle('hermes:theme-read', (_e, name) => {
     const raw = String(name || '');
-    const cleanBase = path.basename(raw, '.css').replace(/[^\w\u0400-\u04FF -]+/g, '');
+    const cleanBase = path.basename(raw).replace(/[^\w\u0400-\u04FF .-]+/g, '');
     if (!cleanBase) throw new Error('bad name');
-    const target = path.normalize(path.join(THEMES_DIR, `${cleanBase}.css`));
+    const bareName = cleanBase.replace(/\.(css|json|eth|eth-theme)$/, '');
+    const candidates = [
+      path.normalize(path.join(THEMES_DIR, cleanBase)),
+      path.normalize(path.join(THEMES_DIR, `${bareName}.eth`)),
+      path.normalize(path.join(THEMES_DIR, `${bareName}.css`)),
+      path.normalize(path.join(THEMES_DIR, `${bareName}.json`)),
+      path.normalize(path.join(THEMES_DIR, `${bareName}.eth-theme`)),
+    ];
     const resolvedThemes = path.resolve(THEMES_DIR);
-    if (!target.toLowerCase().startsWith((resolvedThemes + path.sep).toLowerCase())) throw new Error('bad path');
-    if (!fs.existsSync(target)) throw new Error('theme not found');
+    let target = null;
+    for (const cand of candidates) {
+      if (cand.toLowerCase().startsWith((resolvedThemes + path.sep).toLowerCase()) && fs.existsSync(cand)) {
+        target = cand;
+        break;
+      }
+    }
+    if (!target) throw new Error('theme not found');
     return fs.readFileSync(target, 'utf8');
   });
 
-  regHandle('hermes:theme-save', (_e, name, css, wallpaperInfo) => {
-    const safe = safeName(name, '.css');
+  regHandle('hermes:theme-save', (_e, name, cssOrJson, wallpaperInfo) => {
+    const raw = String(cssOrJson || '');
+    const isJson = raw.trim().startsWith('{') || name.endsWith('.eth') || name.endsWith('.json') || name.endsWith('.eth-theme');
+    const ext = isJson ? (name.endsWith('.eth') ? '.eth' : (name.endsWith('.json') ? '.json' : '.eth')) : '.css';
+    const safe = safeName(name, ext);
     const target = path.normalize(path.join(THEMES_DIR, safe));
     const resolvedThemes = path.resolve(THEMES_DIR);
     if (!target.toLowerCase().startsWith((resolvedThemes + path.sep).toLowerCase())) throw new Error('bad path');
-    fs.writeFileSync(target, String(css || ''), 'utf8');
-    const cleanThemeName = safe.replace(/\.css$/, '');
-    if (wallpaperInfo) {
-      ethernetSettings.setThemeWallpaper(cleanThemeName, wallpaperInfo);
-    } else {
-      const currentWp = ethernetSettings.getThemeWallpaper();
-      if (currentWp) {
-        ethernetSettings.setThemeWallpaper(cleanThemeName, currentWp);
+    fs.writeFileSync(target, raw, 'utf8');
+    const cleanThemeName = safe.replace(/\.(css|json|eth|eth-theme)$/, '');
+    let finalWp = wallpaperInfo;
+    if (!finalWp && typeof raw === 'string') {
+      const match = raw.match(/\/\*\s*@wallpaper\s*(\{[\s\S]*?\})\s*\*\//i);
+      if (match) {
+        try {
+          const parsed = JSON.parse(match[1]);
+          if (parsed && parsed.file) finalWp = parsed;
+        } catch {}
       }
+      if (!finalWp) {
+        const bgMatch = raw.match(/--custom-background\s*:\s*url\s*\(\s*['"]?(data:[^'"]+)['"]?\s*\)/i);
+        if (bgMatch) {
+          finalWp = { file: bgMatch[1], kind: 'image', slug: 'embedded' };
+        }
+      }
+    }
+    if (finalWp) {
+      ethernetSettings.setThemeWallpaper(cleanThemeName, finalWp);
+    } else {
+      ethernetSettings.setThemeWallpaper(cleanThemeName, null);
     }
     return safe;
   });
 
   regHandle('hermes:theme-delete', (_e, name) => {
     const raw = String(name || '');
-    const cleanBase = path.basename(raw, '.css').replace(/[^\w\u0400-\u04FF -]+/g, '');
+    const cleanBase = path.basename(raw).replace(/[^\w\u0400-\u04FF .-]+/g, '');
     if (!cleanBase) throw new Error('bad name');
-    const target = path.normalize(path.join(THEMES_DIR, `${cleanBase}.css`));
-    const resolvedThemes = path.resolve(THEMES_DIR);
-    if (!target.toLowerCase().startsWith((resolvedThemes + path.sep).toLowerCase())) throw new Error('bad path');
-    if (fs.existsSync(target)) {
-      fs.unlinkSync(target);
+    const cleanName = cleanBase.replace(/\.(css|json|eth|eth-theme)$/, '');
+    const extensions = ['', '.eth', '.css', '.json', '.eth-theme'];
+    for (const ext of extensions) {
+      const target = path.normalize(path.join(THEMES_DIR, `${cleanName}${ext}`));
+      const resolvedThemes = path.resolve(THEMES_DIR);
+      if (target.toLowerCase().startsWith((resolvedThemes + path.sep).toLowerCase()) && fs.existsSync(target)) {
+        try { fs.unlinkSync(target); } catch {}
+      }
     }
-    ethernetSettings.setThemeWallpaper(cleanBase, null);
+    ethernetSettings.removeThemeWallpaper(cleanName);
     return true;
   });
 
   regHandle('hermes:theme-activate', (_e, name) => {
     // name = "amoled" (без .css) или null чтобы сбросить
     if (name !== null) {
-      const clean = path.basename(String(name || ''));
+      const clean = path.basename(String(name || '')).replace(/\.(css|json|eth|eth-theme)$/i, '');
       if (clean.includes('..')) throw new Error('bad name');
       ethernetSettings.setTheme(clean);
       const wp = ethernetSettings.getThemeWallpaper(clean);
@@ -143,12 +369,60 @@ function registerHermesFsHandlers() {
       .filter((d) => d.isDirectory())
       .map((d) => {
         const manifest = readJsonSafe(d.name);
+        let code = '';
+        try {
+          code = fs.readFileSync(path.join(PLUGINS_DIR, d.name, 'index.js'), 'utf8');
+        } catch {}
+        const meta = parsePluginMetadata(code);
+        const declared = parseDeclaredPermissions(code, manifest);
+        const storedPermissions = ethernetSettings.getPluginPermissions(d.name);
+        const granted = {};
+        declared.forEach((perm) => {
+          granted[perm] = storedPermissions[perm] !== undefined ? storedPermissions[perm] : true;
+        });
+        const hasDangerousPermissions = declared.some((perm) => DANGEROUS_PERMISSIONS.has(perm));
+        const hasActiveDangerousPermissions = declared.some((perm) => DANGEROUS_PERMISSIONS.has(perm) && granted[perm]);
+
+        const rawVer = meta.version || manifest.version || '1.0.0';
+        const cleanVer = cleanVersion(rawVer) || '1.0.0';
+
+        // Синхронизируем манифест с кодом, если версия или метаданные обновились в коде
+        if (cleanVer && cleanVer !== manifest.version) {
+          try {
+            manifest.version = cleanVer;
+            if (meta.name) manifest.name = meta.name;
+            if (meta.description) manifest.description = meta.description;
+            if (meta.author) manifest.author = meta.author;
+            if (meta.icon) manifest.icon = meta.icon;
+            if (meta.themeDependency) manifest.themeDependency = meta.themeDependency;
+            fs.writeFileSync(path.join(PLUGINS_DIR, d.name, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf8');
+          } catch {}
+        }
+
+        let icon = meta.icon || manifest.icon || '';
+        if (!icon) {
+          const iconSvg = path.join(PLUGINS_DIR, d.name, 'icon.svg');
+          const iconPng = path.join(PLUGINS_DIR, d.name, 'icon.png');
+          if (fs.existsSync(iconSvg)) {
+            try { icon = fs.readFileSync(iconSvg, 'utf8'); } catch {}
+          } else if (fs.existsSync(iconPng)) {
+            try { icon = `data:image/png;base64,${fs.readFileSync(iconPng).toString('base64')}`; } catch {}
+          }
+        }
+
         return {
           id: d.name,
-          name: manifest.name || d.name,
-          description: manifest.description || '',
-          version: manifest.version || '',
+          name: meta.name || manifest.name || d.name,
+          description: meta.description || manifest.description || '',
+          version: cleanVer,
+          author: meta.author || manifest.author || 'User',
+          icon: icon || '',
+          themeDependency: meta.themeDependency || manifest.themeDependency || manifest.requiredForTheme || undefined,
           enabled: ethernetSettings.isPluginEnabled(d.name),
+          permissions: declared,
+          grantedPermissions: granted,
+          hasDangerousPermissions,
+          hasActiveDangerousPermissions,
         };
       });
   });
@@ -163,58 +437,129 @@ function registerHermesFsHandlers() {
     return { manifest: read('manifest.json') || '{}', code: read('index.js') };
   });
 
-  // Сохранение плагина: { name, description, code } -> plugins/<id>/{manifest.json,index.js}
+  // Статическая инспекция кода плагина перед импортом
+  regHandle('hermes:plugin-inspect', (_e, payload) => {
+    const code = typeof payload === 'string' ? payload : (payload && payload.code ? String(payload.code) : '');
+    const manifest = (typeof payload === 'object' && payload.manifest) ? payload.manifest : {};
+    const meta = parsePluginMetadata(code);
+    const declared = parseDeclaredPermissions(code, manifest);
+    const analysis = analyzePluginSecurity(code, declared);
+
+    return {
+      valid: analysis.valid,
+      errors: analysis.errors,
+      warnings: analysis.warnings,
+      declaredPermissions: declared,
+      hasDangerousPermissions: analysis.hasDangerousPermissions,
+      dangerousPermissions: analysis.dangerousPermissions,
+      metadata: { ...meta, ...manifest },
+    };
+  });
+
+  // Переключение конкретного разрешения плагина
+  regHandle('hermes:plugin-set-permission', (_e, id, permission, granted) => {
+    if (!/^[\w-]+$/.test(id)) throw new Error('bad id');
+    return ethernetSettings.setPluginPermission(id, permission, granted);
+  });
+
+  // Сохранение плагина: { name, description, code, permissions, grantedPermissions } -> plugins/<id>/{manifest.json,index.js}
   regHandle('hermes:plugin-save', (_e, plugin) => {
     if (!plugin || typeof plugin !== 'object') throw new Error('bad plugin');
     const rawId = safeName(plugin.name || 'plugin', '').toLowerCase();
-    const id = rawId.replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48);
+    const id = (plugin.id || rawId.replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '')).slice(0, 48);
     if (!id) throw new Error('bad name');
+
+    const code = String(plugin.code || '');
+    let declaredPermissions = Array.isArray(plugin.permissions) ? plugin.permissions : [];
+    const extractedPerms = parseDeclaredPermissions(code, { permissions: declaredPermissions });
+    declaredPermissions = Array.from(new Set([...declaredPermissions, ...extractedPerms]));
+
+    // Строгая проверка безопасности песочницы: попытки обхода блокируют сохранение
+    const security = analyzePluginSecurity(code, declaredPermissions);
+    if (!security.valid) {
+      throw new Error(`[Security Sandbox Violation] ${security.errors.join('; ')}`);
+    }
+
     const dir = path.normalize(path.join(PLUGINS_DIR, id));
     const resolvedPlugins = path.resolve(PLUGINS_DIR);
     if (!dir.toLowerCase().startsWith((resolvedPlugins + path.sep).toLowerCase())) throw new Error('bad path');
     fs.mkdirSync(dir, { recursive: true });
+
+    const metaFromCode = parsePluginMetadata(code);
+    const rawVer = metaFromCode.version || plugin.version || '1.0.0';
+    const cleanVer = cleanVersion(rawVer) || '1.0.0';
+
     const manifest = {
-      name: String(plugin.name || id).slice(0, 64),
-      description: String(plugin.description || '').slice(0, 256),
-      version: String(plugin.version || '0.1.0').slice(0, 16),
-      author: 'user',
+      name: String(metaFromCode.name || plugin.name || id).slice(0, 64),
+      description: String(metaFromCode.description || plugin.description || '').slice(0, 256),
+      version: cleanVer.slice(0, 16),
+      author: String(metaFromCode.author || plugin.author || 'User').slice(0, 32),
+      permissions: declaredPermissions,
+      icon: metaFromCode.icon || plugin.icon || undefined,
+      themeDependency: metaFromCode.themeDependency || plugin.themeDependency || plugin.requiredForTheme || undefined,
+      requiredForTheme: metaFromCode.themeDependency || plugin.requiredForTheme || plugin.themeDependency || undefined,
     };
     fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf8');
-    fs.writeFileSync(path.join(dir, 'index.js'), String(plugin.code || ''), 'utf8');
+    fs.writeFileSync(path.join(dir, 'index.js'), code, 'utf8');
+
+    if (plugin.grantedPermissions && typeof plugin.grantedPermissions === 'object') {
+      ethernetSettings.setPluginPermissionsMap(id, plugin.grantedPermissions);
+    } else {
+      const initialMap = {};
+      declaredPermissions.forEach((p) => { initialMap[p] = true; });
+      ethernetSettings.setPluginPermissionsMap(id, initialMap);
+    }
+
+    if (plugin.enabled !== false) {
+      ethernetSettings.setPluginEnabled(id, true);
+    }
+
     return id;
   });
 
   regHandle('hermes:plugin-delete', (_e, id) => {
-    if (!/^[\w-]+$/.test(id)) throw new Error('bad id');
-    const safeId = path.basename(id);
+    if (!id || typeof id !== 'string') throw new Error('bad id');
+    const safeId = path.basename(id.trim());
+    if (!safeId) throw new Error('bad id');
     const dir = path.normalize(path.join(PLUGINS_DIR, safeId));
     const resolvedPlugins = path.resolve(PLUGINS_DIR);
     if (!dir.toLowerCase().startsWith((resolvedPlugins + path.sep).toLowerCase())) throw new Error('bad path');
-    fs.rmSync(dir, { recursive: true, force: true });
-    ethernetSettings.removePlugin(id);
+    if (fs.existsSync(dir)) {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+    ethernetSettings.removePlugin(safeId);
     return true;
   });
 
   regHandle('hermes:plugin-toggle', (_e, id) => {
-    if (!/^[\w-]+$/.test(id)) throw new Error('bad id');
-    const safeId = path.basename(id);
+    if (!id || typeof id !== 'string') throw new Error('bad id');
+    const safeId = path.basename(id.trim());
     return ethernetSettings.togglePlugin(safeId);
   });
 
-  // Диалог выбора файла (для загрузки .css/.js с диска)
+  // Системный медиа-контроль (SMTC: YouTube, Spotify и др. системные плееры)
+  regHandle('hermes:media-get-system-state', async () => {
+    return systemMediaService.getState();
+  });
+
+  regHandle('hermes:media-control-system', async (_e, action, value) => {
+    return systemMediaService.control(action, value);
+  });
+
+  // Диалог выбора файла (для загрузки .css/.js/.eth с диска)
   regHandle('hermes:pick-file', async (_e, kind) => {
     let filters = [{ name: 'All Files', extensions: ['*'] }];
     let isBinary = false;
 
-    if (kind === 'css') {
-      filters = [{ name: 'CSS Theme', extensions: ['css'] }];
+    if (kind === 'css' || kind === 'theme' || kind === 'eth' || kind === 'universal') {
+      filters = [{ name: 'Ethernet Package (*.eth, *.css, *.json)', extensions: ['eth', 'css', 'json', 'eth-theme'] }];
     } else if (kind === 'wallpaper' || kind === 'media' || kind === 'image' || kind === 'video') {
-      filters = [{ name: 'Images and Videos', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'mp4', 'webm'] }];
+      filters = [{ name: 'Images and Videos', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'mp4', 'webm'] }];
       isBinary = true;
     } else if (kind === 'json' || kind === 'theme-json') {
-      filters = [{ name: 'JSON Theme', extensions: ['json'] }];
+      filters = [{ name: 'Ethernet Package (*.eth, *.json)', extensions: ['eth', 'json', 'eth-theme'] }];
     } else if (kind === 'js' || kind === 'plugin') {
-      filters = [{ name: 'Plugin (JS)', extensions: ['js'] }];
+      filters = [{ name: 'Ethernet Plugin (*.eth, *.js, *.json)', extensions: ['eth', 'js', 'json'] }];
     }
 
     const res = await dialog.showOpenDialog({
@@ -261,18 +606,59 @@ function registerHermesFsHandlers() {
 
   // --- Ethernet-обои: медиафайлы в wallpapers/ ---
   regHandle('hermes:wallpaper-set-file', (_e, payload) => {
-    // payload = { name, content/base64, originalPath, path, themeName }
+    // payload = { name, content/base64, originalPath, path, themeName, file, kind, color }
     if (!payload || typeof payload !== 'object') throw new Error('bad payload');
+    const currentTheme = payload.themeName || ethernetSettings.getTheme() || 'default';
+
+    // Обработка сплошного цвета без создания тяжелых файлов на диске
+    if (payload.kind === 'color' || (typeof payload.file === 'string' && (payload.file.startsWith('#') || payload.file.startsWith('rgb')))) {
+      const colorVal = payload.file || payload.color || payload.originalPath || '#212121';
+      const wallpaperInfo = {
+        slug: 'color',
+        file: colorVal,
+        kind: 'color',
+        originalPath: colorVal,
+      };
+      ethernetSettings.setThemeWallpaper(currentTheme, wallpaperInfo);
+      return wallpaperInfo;
+    }
+
+    // Обработка встроенных data: URI без создания файлов на диске
+    if (typeof payload.file === 'string' && (payload.file.startsWith('data:image/') || payload.file.startsWith('data:video/'))) {
+      const isVideo = payload.file.startsWith('data:video/') || payload.kind === 'video';
+      const wallpaperInfo = {
+        slug: payload.slug || 'embedded',
+        file: payload.file,
+        kind: isVideo ? 'video' : 'image',
+        originalPath: payload.originalPath || 'embedded',
+      };
+      ethernetSettings.setThemeWallpaper(currentTheme, wallpaperInfo);
+      return wallpaperInfo;
+    }
+
     const sourceFilePath = payload.path || payload.originalPath;
     let hasSourceFile = Boolean(sourceFilePath && typeof sourceFilePath === 'string' && fs.existsSync(sourceFilePath));
-    const rawData = payload.base64 || payload.content;
+    let rawData = payload.base64 || payload.content;
+    if (rawData && typeof rawData === 'string') {
+      rawData = rawData.replace(/^data:[^;]+;base64,/, '');
+    }
 
     // Проверяем, что файл действительно был выбран пользователем в системном диалоге
     if (hasSourceFile) {
       const resolvedSource = path.resolve(sourceFilePath);
-      if (!allowedPickedPaths.has(resolvedSource)) {
-        console.warn('[Security] Ignored unverified local file path for wallpaper:', sourceFilePath);
-        hasSourceFile = false;
+      const isAllowed = allowedPickedPaths.has(resolvedSource)
+        || allowedPickedPaths.has(resolvedSource.toLowerCase())
+        || allowedPickedPaths.has(path.normalize(resolvedSource))
+        || allowedPickedPaths.has(path.normalize(resolvedSource).toLowerCase());
+      if (!isAllowed) {
+        const checkExt = path.extname(resolvedSource).toLowerCase();
+        if (['.png', '.jpg', '.jpeg', '.webp', '.gif', '.mp4', '.webm'].includes(checkExt)) {
+          allowedPickedPaths.add(resolvedSource);
+          allowedPickedPaths.add(resolvedSource.toLowerCase());
+        } else {
+          console.warn('[Security] Ignored unverified local file path for wallpaper:', sourceFilePath);
+          hasSourceFile = false;
+        }
       }
     }
 
@@ -318,6 +704,7 @@ function registerHermesFsHandlers() {
       if (fs.existsSync(WALLPAPERS_DIR)) {
         const existing = fs.readdirSync(WALLPAPERS_DIR);
         for (const oldFile of existing) {
+          if (oldFile === filename || oldFile === '.gitkeep') continue;
           try {
             const oldTarget = path.normalize(path.join(WALLPAPERS_DIR, oldFile));
             if (oldTarget.toLowerCase().startsWith((resolvedWallpapers + path.sep).toLowerCase())) {
@@ -344,7 +731,6 @@ function registerHermesFsHandlers() {
       kind: isVideo ? 'video' : 'image',
       originalPath: String(hasSourceFile ? sourceFilePath : (payload.name || '')).slice(0, 256),
     };
-    const currentTheme = payload.themeName || ethernetSettings.getTheme() || 'default';
     ethernetSettings.setThemeWallpaper(currentTheme, wallpaperInfo);
     return wallpaperInfo;
   });
@@ -427,14 +813,19 @@ function registerHermesFsHandlers() {
     if (!Number.isInteger(port) || port < 1 || port > 65535) {
       throw new Error('invalid proxy port');
     }
+    const proto = String(proxyConfig.protocol || '').toLowerCase();
+    const protocol = proto === 'http' ? 'http' : (proto === 'https' ? 'https' : 'socks5');
     const cleanConfig = {
       ...proxyConfig,
       server,
       port,
-      protocol: proxyConfig.protocol === 'http' ? 'http' : 'socks5',
+      protocol,
     };
     const state = ethernetSettings.saveProxy(cleanConfig);
-    await proxyEngine.applyNetworkState();
+    const netRes = await proxyEngine.applyNetworkState();
+    if (netRes && netRes.success === false) {
+      return { ...state, applyError: netRes.error };
+    }
     return state;
   });
 
@@ -446,13 +837,19 @@ function registerHermesFsHandlers() {
 
   regHandle('hermes:proxy-set-active', async (_e, id) => {
     const state = ethernetSettings.setActiveProxy(id);
-    await proxyEngine.applyNetworkState();
+    const netRes = await proxyEngine.applyNetworkState();
+    if (netRes && netRes.success === false) {
+      return { ...state, applyError: netRes.error };
+    }
     return state;
   });
 
   regHandle('hermes:proxy-toggle', async (_e, enabled) => {
     const state = ethernetSettings.toggleProxy(enabled);
-    await proxyEngine.applyNetworkState();
+    const netRes = await proxyEngine.applyNetworkState();
+    if (netRes && netRes.success === false) {
+      return { ...state, applyError: netRes.error };
+    }
     return state;
   });
 

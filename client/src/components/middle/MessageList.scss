@@ -216,6 +216,13 @@
       opacity: 0;
     }
 
+    &.is-just-added {
+      transform: none !important;
+      opacity: 1 !important;
+      transition: none !important;
+      animation: none !important;
+    }
+
     body.no-message-sending-animations & {
       transform: none !important;
       opacity: 1 !important;

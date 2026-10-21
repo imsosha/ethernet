@@ -20,7 +20,7 @@
   font-size: 0.9375rem;
   font-weight: var(--font-weight-medium);
   line-height: 2.125rem;
-  color: var(--accent-color);
+  color: var(--color-primary, #3b82f6) !important;
   white-space: nowrap;
 
   background: var(--background-color);
@@ -125,7 +125,10 @@
   }
 
   &.CommentButton-custom-shape {
-    background-color: transparent;
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
 
     &::after {
       top: 1.5rem;
@@ -133,13 +136,13 @@
     }
 
     &:hover {
-      background-color: rgba(255, 255, 255, 0.08);
+      background-color: rgba(255, 255, 255, 0.08) !important;
       filter: none;
       backdrop-filter: none;
     }
 
     &.disabled {
-      background-color: rgba(255, 255, 255, 0.08);
+      background-color: rgba(255, 255, 255, 0.08) !important;
     }
   }
 
@@ -244,7 +247,7 @@
 
       vertical-align: middle;
 
-      background-color: var(--accent-color);
+      background-color: var(--color-primary, #3b82f6) !important;
     }
   }
 

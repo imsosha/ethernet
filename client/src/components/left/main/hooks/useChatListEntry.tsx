@@ -8,7 +8,8 @@ import type {
 } from '../../../../api/types';
 import type { ObserveFn } from '../../../../hooks/useIntersectionObserver';
 
-import { CHAT_HEIGHT_PX } from '../../../../config';
+import { CHAT_COLLAPSED_HEIGHT_PX, CHAT_HEIGHT_PX } from '../../../../config';
+import { getIsLeftColumnCollapsed } from '../../../../util/leftColumnCollapsed';
 import { requestMutation } from '../../../../lib/fasterdom/fasterdom';
 import {
   getMessageIsSpoiler,
@@ -249,7 +250,8 @@ export default function useChatListEntry({
     }
 
     if (animationType === ChatAnimationTypes.Move) {
-      element.style.transform = `translate3d(0, ${-orderDiff * CHAT_HEIGHT_PX - shiftDiff}px, 0)`;
+      const chatHeight = getIsLeftColumnCollapsed() ? CHAT_COLLAPSED_HEIGHT_PX : CHAT_HEIGHT_PX;
+      element.style.transform = `translate3d(0, ${-orderDiff * chatHeight - shiftDiff}px, 0)`;
 
       requestMutation(() => {
         if (isCancelled) return;

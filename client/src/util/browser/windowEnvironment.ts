@@ -58,7 +58,7 @@ export const IS_PWA = (
 
 export const IS_APP = IS_PWA || IS_TAURI;
 
-export const IS_TOUCH_ENV = window.matchMedia('(pointer: coarse)').matches;
+export const IS_TOUCH_ENV = !IS_ELECTRON && window.matchMedia('(pointer: coarse)').matches;
 export const IS_VOICE_RECORDING_SUPPORTED = Boolean(
   window.navigator.mediaDevices && 'getUserMedia' in window.navigator.mediaDevices && (
     window.AudioContext || (window as any).webkitAudioContext

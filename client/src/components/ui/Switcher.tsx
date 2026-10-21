@@ -16,6 +16,7 @@ type OwnProps = {
   inactive?: boolean;
   noAnimation?: boolean;
   onCheck?: (isChecked: boolean) => void;
+  onChange?: (isChecked: boolean) => void;
 };
 
 const Switcher = ({
@@ -28,9 +29,12 @@ const Switcher = ({
   inactive,
   noAnimation,
   onCheck,
+  onChange,
 }: OwnProps) => {
   const handleChange = useLastCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    onCheck?.(e.currentTarget.checked);
+    const isChecked = e.currentTarget.checked;
+    onCheck?.(isChecked);
+    onChange?.(isChecked);
   });
 
   const className = buildClassName(

@@ -157,6 +157,14 @@ const MessageListContent = ({
   const prevContentHeightRef = useRef<number>();
 
   const handleContentResize = useLastCallback((entry: ResizeObserverEntry) => {
+    if (
+      typeof document !== 'undefined'
+      && (document.body.classList.contains('is-resizing-left-column')
+        || document.body.classList.contains('is-animating-left-column'))
+    ) {
+      return;
+    }
+
     const newHeight = entry.contentRect.height;
     const prevHeight = prevContentHeightRef.current;
     prevContentHeightRef.current = newHeight;
@@ -390,6 +398,7 @@ const MessageListContent = ({
             ? `${message.date}_${originalId}` : originalId;
           const shouldShowGuestAvatar = isPrivate && !withUsers && Boolean(message.guestChatViaId);
           const isJustAdded = addedMessageIds?.includes(message.id)
+            || (message.previousLocalId ? addedMessageIds?.includes(message.previousLocalId) : false)
             || Boolean(album?.messages.some(({ id }) => addedMessageIds?.includes(id)));
 
           return compact([

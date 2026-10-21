@@ -1,6 +1,8 @@
 .MessageOutgoingStatus {
   overflow: hidden;
   display: inline-block;
+  contain: paint layout;
+  transform: translateZ(0);
 
   width: 1.1875rem;
   height: 1.1875rem;

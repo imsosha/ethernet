@@ -161,7 +161,16 @@ export async function init(initialArgs: ApiInitialArgs, onConnected?: NoneToVoid
       // eslint-disable-next-line no-console
       console.error(err);
 
-      if (err?.message !== 'Disconnect' && err?.message !== 'Cannot send requests while disconnected') {
+      const errorMessage = err?.message || String(err);
+      const isAuthError = (
+        errorMessage.includes('AUTH_KEY_UNREGISTERED')
+        || errorMessage.includes('AUTH_KEY_INVALID')
+        || errorMessage.includes('SESSION_REVOKED')
+        || errorMessage.includes('SESSION_EXPIRED')
+        || errorMessage.includes('USER_DEACTIVATED')
+      );
+
+      if (isAuthError) {
         sendApiUpdate({
           '@type': 'updateConnectionState',
           connectionState: 'connectionStateBroken',
@@ -169,6 +178,13 @@ export async function init(initialArgs: ApiInitialArgs, onConnected?: NoneToVoid
 
         return;
       }
+
+      sendApiUpdate({
+        '@type': 'updateConnectionState',
+        connectionState: 'connectionStateConnecting',
+      });
+
+      return;
     }
 
     if (DEBUG) {

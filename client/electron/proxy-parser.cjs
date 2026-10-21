@@ -107,19 +107,21 @@ function parseProxyUri(rawUri) {
   // 3. http:// или https://
   if (uriStr.startsWith('http://') || uriStr.startsWith('https://')) {
     try {
+      const isHttps = uriStr.startsWith('https://');
       const parsed = new URL(uriStr);
       const server = parsed.hostname;
-      const port = parseInt(parsed.port, 10) || (uriStr.startsWith('https://') ? 443 : 8080);
+      const port = parseInt(parsed.port, 10) || (isHttps ? 443 : 8080);
       if (!isValidHost(server) || !isValidPort(port)) return null;
 
       const username = decodeURIComponent(parsed.username || '');
       const password = decodeURIComponent(parsed.password || '');
-      const name = decodeURIComponent(parsed.hash.replace(/^#/, '')) || `HTTP ${server}:${port}`;
+      const protoLabel = isHttps ? 'HTTPS' : 'HTTP';
+      const name = decodeURIComponent(parsed.hash.replace(/^#/, '')) || `${protoLabel} ${server}:${port}`;
 
       return {
         id: generateId(),
         name,
-        protocol: 'http',
+        protocol: isHttps ? 'https' : 'http',
         server,
         port,
         auth: (username || password) ? { username, password } : undefined,
@@ -168,7 +170,7 @@ function serializeProxyUri(proxy) {
 
   const { protocol = 'socks5', server, port, auth = {}, name = '' } = proxy;
   const hash = name ? `#${encodeURIComponent(name)}` : '';
-  const scheme = protocol === 'http' ? 'http' : 'socks5';
+  const scheme = protocol === 'http' ? 'http' : (protocol === 'https' ? 'https' : 'socks5');
   const authPart = auth && auth.username ? `${encodeURIComponent(auth.username)}:${encodeURIComponent(auth.password || '')}@` : '';
 
   return `${scheme}://${authPart}${server}:${port}${hash}`;

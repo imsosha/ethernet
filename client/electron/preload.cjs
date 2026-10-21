@@ -16,6 +16,11 @@ const desktopBridge = {
   pluginSave: (plugin) => ipcRenderer.invoke('hermes:plugin-save', plugin),
   pluginDelete: (id) => ipcRenderer.invoke('hermes:plugin-delete', id),
   pluginToggle: (id) => ipcRenderer.invoke('hermes:plugin-toggle', id),
+  pluginSetPermission: (id, permission, granted) => ipcRenderer.invoke('hermes:plugin-set-permission', id, permission, granted),
+  pluginInspect: (payload) => ipcRenderer.invoke('hermes:plugin-inspect', payload),
+  // Системный медиа-контроль (SMTC)
+  mediaGetSystemState: () => ipcRenderer.invoke('hermes:media-get-system-state'),
+  mediaControlSystem: (action, value) => ipcRenderer.invoke('hermes:media-control-system', action, value),
   // Служебное
   pickFile: (kind) => ipcRenderer.invoke('hermes:pick-file', kind),
   saveFile: (payload) => ipcRenderer.invoke('hermes:save-file', payload),
@@ -66,6 +71,9 @@ const desktopBridge = {
     ipcRenderer.on('hermes:notifications-disabled-changed', handler);
     return () => ipcRenderer.removeListener('hermes:notifications-disabled-changed', handler);
   },
+  // Нативные системные уведомления ОС
+  nativeNotificationsGet: () => ipcRenderer.invoke('hermes:native-notifications-get'),
+  nativeNotificationsSet: (enabled) => ipcRenderer.invoke('hermes:native-notifications-set', enabled),
   // Не сворачивать в трей (закрывать по крестику)
   closeToTrayDisabledGet: () => ipcRenderer.invoke('hermes:close-to-tray-disabled-get'),
   closeToTrayDisabledSet: (disabled) => ipcRenderer.invoke('hermes:close-to-tray-disabled-set', disabled),
@@ -77,7 +85,21 @@ const desktopBridge = {
   reportPluginCrash: (pluginId, error) => ipcRenderer.invoke('hermes:report-plugin-crash', pluginId, error),
   // Счетчик непрочитанных для таскбара / трея
   setUnreadCount: (count) => ipcRenderer.send('hermes:set-unread-count', count),
+  // Энергосбережение
+  onPowerSuspend: (cb) => {
+    const handler = () => cb();
+    ipcRenderer.on('hermes:power-suspend', handler);
+    return () => ipcRenderer.removeListener('hermes:power-suspend', handler);
+  },
+  onPowerResume: (cb) => {
+    const handler = () => cb();
+    ipcRenderer.on('hermes:power-resume', handler);
+    return () => ipcRenderer.removeListener('hermes:power-resume', handler);
+  },
 };
+
+ipcRenderer.on('hermes:power-suspend', () => window.dispatchEvent(new CustomEvent('hermes:power-suspend')));
+ipcRenderer.on('hermes:power-resume', () => window.dispatchEvent(new CustomEvent('hermes:power-resume')));
 
 contextBridge.exposeInMainWorld('ethernetDesktop', desktopBridge);
 contextBridge.exposeInMainWorld('hermesDesktop', desktopBridge);

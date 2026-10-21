@@ -109,7 +109,7 @@ const ThemeCssEditorModal: FC<OwnProps> = ({
   // Откат предпросмотра при закрытии без сохранения или подтверждение сохранения
   const handleClose = useLastCallback(() => {
     if (css !== originalCssRef.current) {
-      const confirmSave = window.confirm('У вас есть несохранённые изменения в теме. Сохранить их перед выходом?');
+      const confirmSave = window.confirm(getEthernetString(lang, 'EthernetUnsavedThemeConfirm'));
       if (confirmSave) {
         void handleSave();
         return;
@@ -227,7 +227,7 @@ const ThemeCssEditorModal: FC<OwnProps> = ({
 
         {/* Панель переменных: плавный горизонтальный скролл */}
         <div className={styles.tokensRow}>
-          <span className={styles.tokensLabel}>Переменные:</span>
+          <span className={styles.tokensLabel}>{getEthernetString(lang, 'EthernetVariables')}:</span>
           <div
             ref={tokenChipsRef}
             className={styles.tokenChips}
@@ -243,7 +243,7 @@ const ThemeCssEditorModal: FC<OwnProps> = ({
                 key={token.label}
                 className={styles.tokenChip}
                 onClick={() => insertAtCursor(token.insert)}
-                title={`Вставить ${token.insert}`}
+                title={`${getEthernetString(lang, 'EthernetInsertVariable')} ${token.insert}`}
               >
                 {token.label.replace('--color-', '').replace('--border-radius-', 'r-')}
               </button>
@@ -258,7 +258,7 @@ const ThemeCssEditorModal: FC<OwnProps> = ({
             value={css}
             onChange={(e) => handleCssChange(e.currentTarget.value)}
             onKeyDown={handleKeyDown}
-            placeholder="/* Пишите сюда любой CSS-код темы */"
+            placeholder={getEthernetString(lang, 'EthernetCssPlaceholder')}
             className={styles.codeTextarea}
             spellCheck={false}
             autoCapitalize="off"
@@ -269,7 +269,7 @@ const ThemeCssEditorModal: FC<OwnProps> = ({
         {/* Нижняя панель действий */}
         <div className={styles.bottomBar}>
           <span className={styles.statsText}>
-            Строк: {lineCount} · Символов: {charCount}
+            {getEthernetString(lang, 'EthernetLines')}: {lineCount} · {getEthernetString(lang, 'EthernetCharacters')}: {charCount}
           </span>
           <div className={styles.actionsRight}>
             <button
@@ -286,7 +286,7 @@ const ThemeCssEditorModal: FC<OwnProps> = ({
               disabled={isSaving}
               className={styles.saveBtn}
             >
-              {isSaving ? 'Сохранение...' : (isSavedJustNow ? '✓ Сохранено' : getEthernetString(lang, 'EthernetActionSave'))}
+              {isSaving ? getEthernetString(lang, 'EthernetSaving') : (isSavedJustNow ? getEthernetString(lang, 'EthernetSaved') : getEthernetString(lang, 'EthernetActionSave'))}
             </button>
           </div>
         </div>

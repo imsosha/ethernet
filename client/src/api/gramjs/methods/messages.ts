@@ -125,7 +125,7 @@ import {
   resolveMessageApiChatId,
 } from '../helpers/misc';
 import localDb from '../localDb';
-import { sendApiUpdate } from '../updates/apiUpdateEmitter';
+import { sendApiUpdate, sendImmediateApiUpdate } from '../updates/apiUpdateEmitter';
 import { processMessageAndUpdateThreadInfo } from '../updates/entityProcessor';
 import { processAffectedHistory, updateChannelState } from '../updates/updateManager';
 import { requestChatUpdate } from './chats';
@@ -401,7 +401,7 @@ export function sendMessageLocal(
     dice,
   });
 
-  sendApiUpdate({
+  sendImmediateApiUpdate({
     '@type': localMessage.isScheduled ? 'newScheduledMessage' : 'newMessage',
     id: localMessage.id,
     chatId: chat.id,

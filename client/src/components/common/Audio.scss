@@ -51,8 +51,8 @@
       outline: var(--background-color) solid 0.125rem;
 
       transition:
-        opacity 0.4s,
-        transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        opacity var(--layer-transition),
+        transform var(--layer-transition);
     }
 
     .toggle-play {
@@ -94,8 +94,8 @@
         transform: scale(1);
         opacity: 1;
         transition:
-          opacity 0.4s,
-          transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+          opacity var(--layer-transition),
+          transform var(--layer-transition);
       }
     }
 

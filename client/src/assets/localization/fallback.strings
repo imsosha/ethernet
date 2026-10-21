@@ -3253,9 +3253,11 @@
 "EthernetSectionAnimations" = "Animations";
 "EthernetBorderRadius" = "Corner radius";
 "EthernetRadiusUi" = "Interface & Panels";
+"EthernetRadiusTopbar" = "Topbar";
 "EthernetRadiusFoldersSidebar" = "Folders sidebar";
 "EthernetRadiusMessages" = "Message bubbles";
-"EthernetRadiusButtons" = "Buttons & inputs";
+"EthernetRadiusInput" = "Input field";
+"EthernetRadiusButtons" = "Buttons";
 "EthernetRadiusAvatars" = "Avatars (%)";
 "EthernetColorBackground" = "Background";
 "EthernetColorBackgroundSecondary" = "Secondary background";

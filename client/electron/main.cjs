@@ -1,4 +1,4 @@
-const { app, BrowserWindow, protocol, net, shell, nativeTheme, Menu, Tray, nativeImage, globalShortcut, screen, ipcMain } = require('electron');
+const { app, BrowserWindow, protocol, net, shell, nativeTheme, Menu, Tray, nativeImage, globalShortcut, screen, ipcMain, powerMonitor } = require('electron');
 const { pathToFileURL } = require('url');
 const { Readable } = require('stream');
 const fs = require('fs');
@@ -7,7 +7,7 @@ const path = require('path');
 if (app) {
   app.name = 'Ethernet';
   if (process.platform === 'win32') {
-    app.setAppUserModelId('org.ethernet.desktop');
+    app.setAppUserModelId(app.isPackaged ? 'org.ethernet.desktop' : process.execPath);
   }
 
   // Сохраняем существующий профиль и базу данных сессии, чтобы аккаунт не разлогинивался
@@ -25,8 +25,21 @@ const hermesSettings = require('./hermes-settings.cjs');
 // Полностью отключаем стандартное меню Electron (File, Edit, View, Window)
 Menu.setApplicationMenu(null);
 
-// Отключаем DnsOverHttps в Chromium, чтобы запросы шли через системный DNS и TUN-прокси (NekoRay, Happ, Clash)
-app.commandLine.appendSwitch('disable-features', 'DnsOverHttps');
+// Отключаем DnsOverHttps и нативную окклюзию окон (вызывающую микрофризы и задержки кликов на Windows, как в Discord)
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
+app.commandLine.appendSwitch('disable-features', 'DnsOverHttps,CalculateNativeWinOcclusion');
+
+// Мгновенная доставка кликов и событий мыши в рендерер без задержек буферизации VSync + аппаратный D3D11 декодер видео
+app.commandLine.appendSwitch('enable-features', 'RunUnbufferedDispatch,D3D11VideoDecoder');
+
+// Разрешаем воспроизведение аудио/видео без предварительного клика (для кружков и предпросмотров)
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
+
+// Аппаратное ускорение рендеринга, декодирования видео и растрирования слоев через GPU
+app.commandLine.appendSwitch('enable-gpu-rasterization');
+app.commandLine.appendSwitch('enable-zero-copy');
+app.commandLine.appendSwitch('enable-accelerated-video-decode');
+app.commandLine.appendSwitch('ignore-gpu-blocklist');
 
 const isPackaged = app.isPackaged;
 const DIST = path.join(__dirname, '..', 'dist');
@@ -85,8 +98,11 @@ function seedDefaultAssets() {
     // 4. Plugins
     const bundlePlugins = path.join(bundleDir, 'plugins');
     if (fs.existsSync(bundlePlugins)) {
+      const s = hermesSettings.read ? hermesSettings.read() : {};
+      const deleted = new Set(s.deletedPlugins || []);
       const plugins = fs.readdirSync(bundlePlugins);
       for (const p of plugins) {
+        if (deleted.has(p)) continue;
         const srcP = path.join(bundlePlugins, p);
         const destP = path.join(PLUGINS_DIR, p);
         if (fs.statSync(srcP).isDirectory() && !fs.existsSync(destP)) {
@@ -121,7 +137,10 @@ protocol.registerSchemesAsPrivileged([
   },
 ]);
 
-const ALLOWED_EXTERNAL_PROTOCOLS = new Set(['http:', 'https:', 'tg:', 'mailto:']);
+// Разрешаем открытие в системном браузере только веб-ссылок и почты.
+// Протокол tg: исключён: все Telegram-ссылки обрабатываются исключительно внутри клиента
+// и ни при каких условиях не передаются в ОС (защита от вызова уязвимого внешнего Telegram Desktop).
+const ALLOWED_EXTERNAL_PROTOCOLS = new Set(['http:', 'https:', 'mailto:']);
 
 function isSafeExternalUrl(rawUrl) {
   if (!rawUrl || typeof rawUrl !== 'string') return false;
@@ -155,7 +174,32 @@ function listPlugins() {
   for (const d of dirs) {
     if (!d.isDirectory()) continue;
     const m = readJson(path.join(PLUGINS_DIR, d.name, 'manifest.json'), null);
-    if (m) out.push({ id: d.name, enabled: hermesSettings.isPluginEnabled(d.name), ...m });
+    if (m) {
+      const storedPermissions = hermesSettings.getPluginPermissions(d.name) || {};
+      const declared = Array.isArray(m.permissions) ? m.permissions : [];
+      const granted = {};
+      declared.forEach((perm) => {
+        granted[perm] = storedPermissions[perm] !== undefined ? storedPermissions[perm] : true;
+      });
+      let icon = m.icon;
+      if (!icon) {
+        const iconSvg = path.join(PLUGINS_DIR, d.name, 'icon.svg');
+        const iconPng = path.join(PLUGINS_DIR, d.name, 'icon.png');
+        if (fs.existsSync(iconSvg)) {
+          try { icon = fs.readFileSync(iconSvg, 'utf8'); } catch {}
+        } else if (fs.existsSync(iconPng)) {
+          try { icon = `data:image/png;base64,${fs.readFileSync(iconPng).toString('base64')}`; } catch {}
+        }
+      }
+      out.push({
+        ...m,
+        id: d.name,
+        icon: icon || m.icon || '',
+        enabled: hermesSettings.isPluginEnabled(d.name),
+        permissions: declared,
+        grantedPermissions: granted,
+      });
+    }
   }
   return out;
 }
@@ -191,6 +235,11 @@ function registerAppProtocol() {
           enabled: isSafeMode ? false : hermesSettings.isPluginEnabled(rest.id),
           id: rest.id,
           name: rest.name,
+          permissions: rest.permissions || [],
+          grantedPermissions: rest.grantedPermissions || {},
+          hasDangerousPermissions: (rest.permissions || []).some((p) =>
+            ['credentials', 'telegram.updates', 'network.intercept', 'network.raw', 'telegram.store', 'desktop.ipc'].includes(p)
+          ),
         }));
         return new Response(JSON.stringify(plugins), {
           headers: { 'content-type': 'application/json; charset=utf-8' },
@@ -207,27 +256,94 @@ function registerAppProtocol() {
         try {
           const prefix = pathname.startsWith('/ethernet/theme/') ? '/ethernet/theme/' : '/hermes/theme/';
           const rawName = decodeURIComponent(pathname.slice(prefix.length, -4));
-          const safeThemeName = path.basename(rawName);
-          const target = path.normalize(path.join(THEMES_DIR, `${safeThemeName}.css`));
+          const safeThemeName = path.basename(rawName).replace(/\.(css|eth|json|eth-theme)$/i, '');
+          const candidates = [
+            path.normalize(path.join(THEMES_DIR, `${safeThemeName}.css`)),
+            path.normalize(path.join(THEMES_DIR, `${safeThemeName}.eth`)),
+            path.normalize(path.join(THEMES_DIR, `${safeThemeName}.json`)),
+            path.normalize(path.join(THEMES_DIR, `${safeThemeName}.eth-theme`)),
+          ];
           const resolvedThemes = path.resolve(THEMES_DIR);
-          if (target.toLowerCase().startsWith((resolvedThemes + path.sep).toLowerCase()) && fs.existsSync(target)) {
-            return new Response(fs.readFileSync(target, 'utf8'), {
-              headers: { 'content-type': 'text/css; charset=utf-8' },
-            });
+          for (const target of candidates) {
+            if (target.toLowerCase().startsWith((resolvedThemes + path.sep).toLowerCase()) && fs.existsSync(target)) {
+              const fileContent = fs.readFileSync(target, 'utf8');
+              if (target.endsWith('.css')) {
+                return new Response(fileContent, {
+                  headers: { 'content-type': 'text/css; charset=utf-8' },
+                });
+              }
+              // .eth / .json package
+              try {
+                const parsed = JSON.parse(fileContent);
+                let css = parsed.css || '';
+                if (!css && parsed.mod && parsed.mod.colors) {
+                  const lines = [':root {'];
+                  for (const [k, v] of Object.entries(parsed.mod.colors)) {
+                    if (v) lines.push(`  ${k}: ${v};`);
+                  }
+                  lines.push('}');
+                  css = lines.join('\n');
+                }
+                return new Response(css, {
+                  headers: { 'content-type': 'text/css; charset=utf-8' },
+                });
+              } catch {}
+            }
           }
         } catch {}
         return new Response('Not Found', { status: 404 });
       }
 
+      function resolveWallpaperFile(wp) {
+        if (!wp || (!wp.file && !wp.slug && !wp.originalPath)) return null;
+        if (typeof wp.file === 'string' && (wp.file.startsWith('#') || wp.file.startsWith('rgb'))) {
+          return wp.file;
+        }
+        if (typeof wp.file === 'string' && (wp.file.startsWith('data:image/') || wp.file.startsWith('data:video/'))) {
+          return wp.file;
+        }
+        if (wp.slug === 'color') return wp.file || null;
+        if (!fs.existsSync(WALLPAPERS_DIR)) {
+          try { fs.mkdirSync(WALLPAPERS_DIR, { recursive: true }); } catch {}
+        }
+        const files = fs.existsSync(WALLPAPERS_DIR) ? fs.readdirSync(WALLPAPERS_DIR) : [];
+        let file = (wp.file && files.includes(wp.file)) ? wp.file : files.find((f) => f === wp.file || (wp.slug && wp.slug !== 'color' && f.startsWith(wp.slug)));
+        if (!file && wp.originalPath && fs.existsSync(wp.originalPath)) {
+          try {
+            const ext = path.extname(wp.originalPath).toLowerCase() || (wp.kind === 'video' ? '.mp4' : '.png');
+            const filename = wp.file || `${wp.slug || `ethernet-${Date.now()}`}${ext}`;
+            const dest = path.join(WALLPAPERS_DIR, filename);
+            fs.copyFileSync(wp.originalPath, dest);
+            file = filename;
+          } catch (e) {
+            console.error('[main] auto-restore wallpaper failed:', e);
+          }
+        }
+        return file;
+      }
+
       if (pathname === '/ethernet/mod.json' || pathname === '/hermes/mod.json') {
         const mod = hermesSettings.getMod() || {};
         const wp = hermesSettings.getThemeWallpaper();
-        if (wp && (wp.file || wp.slug)) {
-          const files = fs.existsSync(WALLPAPERS_DIR) ? fs.readdirSync(WALLPAPERS_DIR) : [];
-          const file = (wp.file && files.includes(wp.file)) ? wp.file : files.find((f) => f === wp.file || f.startsWith(wp.file || wp.slug) || (wp.slug && f.startsWith(wp.slug)));
+        if (wp && (wp.kind === 'color' || wp.slug === 'color' || (typeof wp.file === 'string' && (wp.file.startsWith('#') || wp.file.startsWith('rgb'))))) {
+          const colorVal = wp.file || wp.originalPath || '#212121';
+          mod.wallpaperFile = colorVal;
+          mod.wallpaperKind = 'color';
+          mod.wallpaperOriginalPath = colorVal;
+        } else if (wp && typeof wp.file === 'string' && wp.file.startsWith('data:')) {
+          mod.wallpaperFile = wp.file;
+          mod.wallpaperKind = wp.kind || 'image';
+          mod.wallpaperOriginalPath = wp.originalPath || 'embedded';
+        } else {
+          const file = resolveWallpaperFile(wp);
           if (file) {
             mod.wallpaperFile = file;
-            mod.wallpaperKind = wp.kind || (/\.(mp4|webm)$/i.test(file) ? 'video' : 'image');
+            mod.wallpaperKind = (wp && wp.kind) || (/\.(mp4|webm)$/i.test(file) ? 'video' : 'image');
+            if (wp && wp.originalPath) mod.wallpaperOriginalPath = wp.originalPath;
+          } else {
+            delete mod.wallpaperFile;
+            delete mod.wallpaperKind;
+            delete mod.wallpaperOriginalPath;
           }
         }
         return new Response(JSON.stringify(mod), {
@@ -236,22 +352,36 @@ function registerAppProtocol() {
       }
 
       if (pathname === '/ethernet/wallpaper.json' || pathname === '/hermes/wallpaper.json') {
-        const themeParam = url.searchParams.get('theme') || hermesSettings.getTheme();
-        const wp = hermesSettings.getThemeWallpaper(themeParam);
-        if (!wp || (!wp.file && !wp.slug)) {
-          return new Response(JSON.stringify({ slug: null, file: null }), {
+        const rawTheme = url.searchParams.get('theme');
+        const themeParam = rawTheme ? path.basename(String(rawTheme).trim()).replace(/\.(css|eth|json|eth-theme)$/i, '') : null;
+        let wp = themeParam ? hermesSettings.getThemeWallpaper(themeParam) : hermesSettings.getThemeWallpaper();
+        if (wp && (wp.kind === 'color' || wp.slug === 'color' || (typeof wp.file === 'string' && (wp.file.startsWith('#') || wp.file.startsWith('rgb'))))) {
+          const colorVal = wp.file || wp.originalPath || '#212121';
+          return new Response(JSON.stringify({ slug: 'color', file: colorVal, kind: 'color', originalPath: colorVal }), {
             headers: { 'content-type': 'application/json; charset=utf-8' },
           });
         }
-        const files = fs.existsSync(WALLPAPERS_DIR) ? fs.readdirSync(WALLPAPERS_DIR) : [];
-        const file = (wp.file && files.includes(wp.file)) ? wp.file : files.find((f) => f === wp.file || f.startsWith(wp.file || wp.slug) || (wp.slug && f.startsWith(wp.slug)));
+        if (wp && typeof wp.file === 'string' && (wp.file.startsWith('data:image/') || wp.file.startsWith('data:video/'))) {
+          const isSvg = wp.file.startsWith('data:image/svg+xml');
+          const isVideo = wp.file.startsWith('data:video/') || wp.kind === 'video';
+          return new Response(JSON.stringify({
+            slug: (wp && wp.slug) || 'embedded',
+            file: wp.file,
+            kind: wp.kind || (isVideo ? 'video' : 'image'),
+            ext: isSvg ? '.svg' : '.png',
+            originalPath: (wp && wp.originalPath) || 'embedded',
+          }), {
+            headers: { 'content-type': 'application/json; charset=utf-8' },
+          });
+        }
+        let file = resolveWallpaperFile(wp);
         if (!file) {
           return new Response(JSON.stringify({ slug: null, file: null }), {
             headers: { 'content-type': 'application/json; charset=utf-8' },
           });
         }
-        const isVideo = wp.kind === 'video' || /\.(mp4|webm)$/i.test(file);
-        return new Response(JSON.stringify({ slug: wp.slug || file, file, kind: isVideo ? 'video' : 'image', ext: path.extname(file), originalPath: wp.originalPath }), {
+        const isVideo = (wp && wp.kind === 'video') || /\.(mp4|webm)$/i.test(file);
+        return new Response(JSON.stringify({ slug: (wp && wp.slug) || file, file, kind: isVideo ? 'video' : 'image', ext: path.extname(file), originalPath: wp && wp.originalPath }), {
           headers: { 'content-type': 'application/json; charset=utf-8' },
         });
       }
@@ -260,6 +390,15 @@ function registerAppProtocol() {
         const file = path.basename(decodeURIComponent(pathname));
         const target = path.normalize(path.join(WALLPAPERS_DIR, file));
         const resolvedWallpapers = path.resolve(WALLPAPERS_DIR);
+        if (!fs.existsSync(target)) {
+          const wp = hermesSettings.getThemeWallpaper();
+          if (wp && wp.originalPath && fs.existsSync(wp.originalPath)) {
+            try {
+              if (!fs.existsSync(WALLPAPERS_DIR)) fs.mkdirSync(WALLPAPERS_DIR, { recursive: true });
+              fs.copyFileSync(wp.originalPath, target);
+            } catch {}
+          }
+        }
         if (target.toLowerCase().startsWith((resolvedWallpapers + path.sep).toLowerCase()) && fs.existsSync(target)) {
           const ext = path.extname(file).toLowerCase();
           const mimeTypes = {
@@ -270,6 +409,7 @@ function registerAppProtocol() {
             '.png': 'image/png',
             '.gif': 'image/gif',
             '.webp': 'image/webp',
+            '.svg': 'image/svg+xml; charset=utf-8',
           };
           const contentType = mimeTypes[ext] || 'application/octet-stream';
           const stat = fs.statSync(target);
@@ -349,6 +489,8 @@ function registerAppProtocol() {
       const indexPath = path.join(DIST, 'index.html');
       if (fs.existsSync(indexPath)) {
         let html = fs.readFileSync(indexPath, 'utf8');
+        // Разрешаем unsafe-eval в CSP для безопасной песочницы плагинов
+        html = html.replace(/script-src\s+'self'(\s+'wasm-unsafe-eval')?/, "script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'");
         const inject = `<script src="/ethernet/loader.js"></script>`;
         if (!html.includes(inject)) html = html.replace('</head>', `${inject}\n</head>`);
         return new Response(html, {
@@ -387,7 +529,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
-      backgroundThrottling: false,
+      backgroundThrottling: true,
     },
   });
 
@@ -431,7 +573,11 @@ function createWindow() {
 
     // Reload: Ctrl+R, Ctrl+Shift+R, F5
     if ((input.control && input.key.toLowerCase() === 'r') || input.key === 'F5') {
-      win.webContents.reloadIgnoringCache();
+      if (input.shift) {
+        win.webContents.reloadIgnoringCache();
+      } else {
+        win.webContents.reload();
+      }
       event.preventDefault();
       return;
     }
@@ -465,7 +611,7 @@ function createWindow() {
             contextIsolation: true,
             nodeIntegration: false,
             sandbox: false,
-            backgroundThrottling: false,
+            backgroundThrottling: true,
           },
         },
       };
@@ -526,7 +672,7 @@ function createTrayMenuWindow() {
       preload: path.join(__dirname, 'preload-tray.cjs'),
       nodeIntegration: false,
       contextIsolation: true,
-      backgroundThrottling: false,
+      backgroundThrottling: true,
     },
   });
 
@@ -753,19 +899,45 @@ if (!gotTheLock) {
   const notificationManager = require('./notification-manager.cjs');
 
   app.whenReady().then(async () => {
-    // Ограничение разрешений (Permissions Request Handler)
+    // Ограничение разрешений (Permissions Request & Check Handlers)
     const { session } = require('electron');
     if (session && session.defaultSession) {
-      session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
-        const originUrl = webContents.getURL();
-        if (!originUrl.startsWith('app://telegram/')) {
+      const allowedPermissions = [
+        'media',
+        'camera',
+        'microphone',
+        'audioCapture',
+        'videoCapture',
+        'display-capture',
+        'notifications',
+        'fullscreen',
+      ];
+
+      session.defaultSession.setPermissionRequestHandler((webContents, permission, callback, details) => {
+        // Защита от iframe: разрешаем захват медиа (микрофон/камера) СТРОГО для главного фрейма самого клиента
+        const isMainFrame = details ? Boolean(details.isMainFrame) : true;
+        const requestingUrl = (details && details.requestingUrl) || webContents?.getURL() || '';
+
+        if (!requestingUrl.startsWith('app://telegram/') || !isMainFrame) {
+          console.warn(`[Security] Blocked permission "${permission}" for untrusted/iframe origin: "${requestingUrl}" (isMainFrame=${isMainFrame})`);
           return callback(false);
         }
-        // Разрешаем только микрофон/камеру (для голосовых/видео сообщений и звонков), уведомления и полноэкранный режим
-        if (['media', 'notifications', 'fullscreen'].includes(permission)) {
+
+        // Разрешаем только микрофон/камеру (для голосовых/видео сообщений-кружков и звонков), уведомления и полноэкранный режим
+        if (allowedPermissions.includes(permission)) {
           return callback(true);
         }
         return callback(false);
+      });
+
+      session.defaultSession.setPermissionCheckHandler((webContents, permission, requestingOrigin, details) => {
+        const isMainFrame = details ? Boolean(details.isMainFrame) : true;
+        const originUrl = requestingOrigin || (details && details.requestingUrl) || webContents?.getURL() || '';
+
+        if ((!originUrl.startsWith('app://telegram/') && originUrl !== '') || !isMainFrame) {
+          return false;
+        }
+        return allowedPermissions.includes(permission);
       });
     }
 
@@ -786,7 +958,7 @@ if (!gotTheLock) {
                 contextIsolation: true,
                 nodeIntegration: false,
                 sandbox: false,
-                backgroundThrottling: false,
+                backgroundThrottling: true,
               },
             },
           };
@@ -833,6 +1005,20 @@ if (!gotTheLock) {
     mainWindow.on('closed', () => {
       mainWindow = null;
     });
+
+    if (powerMonitor) {
+      const notifyAllWindows = (channel) => {
+        BrowserWindow.getAllWindows().forEach((w) => {
+          if (!w.isDestroyed()) {
+            w.webContents.send(channel);
+          }
+        });
+      };
+      powerMonitor.on('suspend', () => notifyAllWindows('hermes:power-suspend'));
+      powerMonitor.on('lock-screen', () => notifyAllWindows('hermes:power-suspend'));
+      powerMonitor.on('resume', () => notifyAllWindows('hermes:power-resume'));
+      powerMonitor.on('unlock-screen', () => notifyAllWindows('hermes:power-resume'));
+    }
 
     notificationManager.setupNotificationIpc(() => mainWindow);
 

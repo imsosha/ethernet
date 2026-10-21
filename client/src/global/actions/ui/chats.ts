@@ -16,6 +16,7 @@ import {
 import { updateTabState } from '../../reducers/tabs';
 import { replaceTabThreadParam } from '../../reducers/threads';
 import { selectChat, selectCurrentMessageList, selectTabState } from '../../selectors';
+import { getIsSidebarPinned } from '../../../util/sidebarPinned';
 
 addActionHandler('openDeleteMemberModal', (global, actions, payload): ActionReturnType => {
   const { chatId, peerId, tabId = getCurrentTabId() } = payload;
@@ -92,7 +93,7 @@ addActionHandler('processOpenChatOrThread', (global, actions, payload): ActionRe
       }),
       // Reset chat info state for new chat
       chatInfo: {
-        isOpen: tabState.chatInfo.isOpen,
+        isOpen: getIsSidebarPinned() || tabState.chatInfo.isOpen,
       },
     }, tabId);
   }

@@ -48,6 +48,9 @@ export type ApiRichText =
   | { type: 'autoPhone'; text: ApiRichText }
   | { type: 'bankCard'; text: ApiRichText }
   | { type: 'mentionName'; text: ApiRichText; userId: string }
+  | { type: 'diff'; text: ApiRichText; oldText: ApiRichText }
+  | { type: 'button'; text: ApiRichText; buttonType: ApiInlineButtonType; style?: ApiRichButtonStyle }
+  | { type: 'tonAddress'; text: ApiRichText }
   | ApiRichTextDate;
 
 export interface ApiPageCaption {
@@ -211,6 +214,7 @@ export type ApiPageBlockTable = {
   rows: ApiPageTableRow[];
   isBordered?: true;
   isStriped?: true;
+  isCompact?: true;
 };
 
 export type ApiPageBlockOrderedList = {
@@ -259,7 +263,46 @@ export type ApiPageBlock =
   | { type: 'heading5'; text: ApiRichText }
   | { type: 'heading6'; text: ApiRichText }
   | { type: 'thinking'; text: ApiRichText }
-  | { type: 'math'; source: string };
+  | { type: 'math'; source: string }
+  | ApiPageBlockButtonRow
+  | ApiPageBlockDocument;
+
+export type ApiRichButtonStyle = {
+  isPrimary?: true;
+  isDanger?: true;
+  isSuccess?: true;
+  isLink?: true;
+};
+
+export type ApiInlineButtonType =
+  | { type: 'url'; url: string }
+  | { type: 'urlAuth'; url: string; buttonId: number; fwdText?: string }
+  | { type: 'webView'; url: string }
+  | { type: 'callback'; data: Uint8Array; requiresPassword?: true }
+  | { type: 'game' }
+  | { type: 'buy' }
+  | { type: 'switchInline'; query: string; isSamePeer?: true }
+  | { type: 'userProfile'; userId: string }
+  | { type: 'copy'; copyText: string }
+  | { type: 'disabled' };
+
+export type ApiPageButton = {
+  text: ApiRichText;
+  buttonType: ApiInlineButtonType;
+  style?: ApiRichButtonStyle;
+};
+
+export type ApiPageBlockButtonRow = {
+  type: 'buttonRow';
+  buttons: ApiPageButton[];
+  align?: 'left' | 'center' | 'right';
+};
+
+export type ApiPageBlockDocument = {
+  type: 'document';
+  document: ApiDocument;
+  caption: ApiPageCaption;
+};
 
 export interface ApiInstantViewPage {
   url: string;

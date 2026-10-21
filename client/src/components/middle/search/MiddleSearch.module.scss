@@ -17,43 +17,47 @@
   bottom: 0;
   left: 0;
 
-  @media (min-width: 1276px) {
-    :global(#Main.right-column-open) & {
-      width: calc(100% - var(--right-column-width));
-    }
-  }
 }
 
 .header {
-  pointer-events: auto;
+  pointer-events: none;
 
   position: absolute;
-  top: calc(var(--middle-panel-inline-padding) + var(--middle-header-player-height, 0px));
+  top: 0.5rem;
   right: 0;
   left: 0;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 0;
+  margin-bottom: 0;
 
   display: flex;
   align-items: center;
 
-  width: calc(100% - var(--middle-panel-inline-padding) * 2);
-  max-width: calc(var(--messages-container-width) - var(--middle-panel-inline-padding) * 2);
+  width: var(--messages-container-width);
+  max-width: calc(100% - 1rem);
+  box-sizing: border-box;
   height: var(--middle-header-height);
-  margin: 0 auto;
   padding-top: 0.25rem;
-  padding-right: max(0.8125rem, env(safe-area-inset-right));
+  padding-right: max(0.25rem, env(safe-area-inset-right));
   padding-bottom: 0.25rem;
   padding-left: max(0.25rem, env(safe-area-inset-left));
-  border-radius: 2rem;
+  border-radius: var(--border-radius-topbar, var(--border-radius-ui, 1.5rem));
 
   opacity: 0;
+  visibility: hidden;
   background-color: var(--color-background);
-  box-shadow: var(--shadow-island);
+  box-shadow: var(--shadow-pane);
 
-  /* stylelint-disable-next-line plugin/no-low-performance-animation-properties */
-  transition: opacity 200ms ease-in-out, top var(--top-stack-transition);
+  will-change: transform;
+  transform: translate3d(0, var(--middle-header-player-shift-y, 0px), 0);
+  -webkit-font-smoothing: subpixel-antialiased;
+  transition: transform 300ms cubic-bezier(0.16, 1, 0.3, 1), opacity 150ms ease, visibility 150ms;
 
   .active & {
     opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
   }
 
   :global(body.no-page-transitions) & {
@@ -62,15 +66,6 @@
 
   :global(body.is-tauri.is-macos) & {
     padding-left: var(--window-controls-width);
-  }
-
-  @media (min-width: 1276px) {
-    /* stylelint-disable-next-line @stylistic/max-line-length */
-    width: calc(100% - var(--right-column-width) - var(--middle-panel-inline-padding) * 2);
-
-    :global(#Main.right-column-open) & {
-      width: calc(100% - var(--middle-panel-inline-padding) * 2);
-    }
   }
 
   @media (max-width: 600px) {

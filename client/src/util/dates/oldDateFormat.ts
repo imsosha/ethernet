@@ -69,7 +69,7 @@ export function formatPastTimeShort(lang: OldLangFn, datetime: number | Date, al
   const weekAgo = new Date(today);
   weekAgo.setDate(today.getDate() - 7);
   if (date >= weekAgo) {
-    const weekday = lang(`Weekday.Short${WEEKDAYS_FULL[date.getDay()]}`);
+    const weekday = formatWeekday(lang, date.getDay(), true);
     return alwaysShowTime ? lang('formatDateAtTime', [weekday, time]) : weekday;
   }
 
@@ -282,13 +282,13 @@ export function formatHumanDate(
 
   if (!noWeekdays) {
     if (toIsoString(date) === toIsoString(today)) {
-      return (isUpperFirst || !isShort ? upperFirst : lowerFirst)(lang('Weekday.Today'));
+      return (isUpperFirst || !isShort ? upperFirst : lowerFirst)(lang('WeekdayToday'));
     }
 
     const yesterday = new Date(today);
     yesterday.setDate(today.getDate() - 1);
     if (toIsoString(date) === toIsoString(yesterday)) {
-      return (isUpperFirst || !isShort ? upperFirst : lowerFirst)(lang('Weekday.Yesterday'));
+      return (isUpperFirst || !isShort ? upperFirst : lowerFirst)(lang('WeekdayYesterday'));
     }
 
     const limitBefore = new Date(today);
@@ -314,7 +314,17 @@ export function formatHumanDate(
  */
 export function formatWeekday(lang: OldLangFn, day: number, isShort = false) {
   const weekDay = WEEKDAYS_FULL[day];
-  return isShort ? lang(`Weekday.Short${weekDay}`) : lang(`Weekday.${weekDay}`);
+  const key = isShort ? `Weekday${day === 0 ? 7 : day}` : `Weekday${weekDay}`;
+  const translated = lang(key as any);
+  if (translated && translated !== key) {
+    return translated;
+  }
+  try {
+    const sampleDate = new Date(2021, 0, 3 + day, 12, 0, 0);
+    return new Intl.DateTimeFormat(lang.code || 'en', { weekday: isShort ? 'short' : 'long' }).format(sampleDate);
+  } catch {
+    return isShort ? weekDay.slice(0, 3) : weekDay;
+  }
 }
 
 export function formatMediaDateTime(

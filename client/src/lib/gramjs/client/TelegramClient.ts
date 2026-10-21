@@ -99,16 +99,16 @@ const WEBDOCUMENT_REQUEST_PART_SIZE = 131072; // 128kb
 const STATIC_MAP_REQUEST_PART_SIZE = 524288; // 512kb
 
 const PING_INTERVAL = 3000; // 3 sec
-const PING_TIMEOUT = 5000; // 5 sec
+const PING_TIMEOUT = 8000; // 8 sec
 const PING_FAIL_ATTEMPTS = 3;
 const PING_FAIL_INTERVAL = 100; // ms
 
 // An unusually long interval is a sign of returning from background mode...
 const PING_INTERVAL_TO_WAKE_UP = 5000; // 5 sec
 // ... so we send a quick "wake-up" ping to confirm than connection was dropped ASAP
-const PING_WAKE_UP_TIMEOUT = 3000; // 3 sec
+const PING_WAKE_UP_TIMEOUT = 8000; // 8 sec
 // We also send a warning to the user even a bit more quickly
-const PING_WAKE_UP_WARNING_TIMEOUT = 1000; // 1 sec
+const PING_WAKE_UP_WARNING_TIMEOUT = 3000; // 3 sec
 
 const PING_DISCONNECT_DELAY = 60000; // 1 min
 
@@ -128,7 +128,7 @@ class TelegramClient {
     timeout: 10,
     requestRetries: 5,
     connectionRetries: Infinity,
-    connectionRetriesToFallback: 1,
+    connectionRetriesToFallback: 3,
     retryDelay: 1000,
     retryMainConnectionDelay: 10000,
     autoReconnect: true,

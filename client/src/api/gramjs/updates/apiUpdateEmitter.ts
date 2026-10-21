@@ -10,6 +10,10 @@ export function init(_onUpdate: OnApiUpdate) {
 }
 
 export function sendApiUpdate(update: ApiUpdate) {
+  if (update['@type'] === 'newMessage' || update['@type'] === 'newScheduledMessage') {
+    sendImmediateApiUpdate(update);
+    return;
+  }
   queueUpdate(update);
 }
 

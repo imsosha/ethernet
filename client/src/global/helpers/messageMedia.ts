@@ -249,6 +249,9 @@ export function getVideoMediaHash(video: ApiVideo | ApiDocument, target: SizeTar
     case 'inline':
       return !hasMediaLocalBlobUrl(video) ? appendProgressiveQueryParameters(video, base) : undefined;
     case 'preview':
+      if (('isRound' in video && video.isRound) || !video.previewPhotoSizes?.some((s) => s.type === 'x')) {
+        return `${base}?size=m`;
+      }
       return `${base}?size=x`;
     case 'download':
       return `${base}?download`;
@@ -287,8 +290,11 @@ export function getAudioMediaHash(audio: ApiAudio, target: SizeTarget) {
 
   switch (target) {
     case 'micro':
-    case 'pictogram':
-      return getAudioHasCover(audio) ? `${base}?size=m` : undefined;
+    case 'pictogram': {
+      if (!getAudioHasCover(audio)) return undefined;
+      const preferred = audio.thumbnailSizes?.find((size) => size.type === 'm') || audio.thumbnailSizes?.[0];
+      return `${base}?size=${preferred?.type || 'm'}`;
+    }
     case 'inline':
       return appendProgressiveQueryParameters(audio, base);
     case 'download':
@@ -395,7 +401,7 @@ export function appendProgressiveQueryParameters(
 }
 
 export function getAudioHasCover(media: ApiAudio) {
-  return media.thumbnailSizes && media.thumbnailSizes.length > 0;
+  return Boolean((media.thumbnailSizes && media.thumbnailSizes.length > 0) || media.thumbnail?.dataUri);
 }
 
 export function getMediaFormat(

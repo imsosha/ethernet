@@ -35,7 +35,7 @@ export interface PaneState {
 const CLOSE_DURATION = 450;
 const RESIZE_THROTTLE = 100;
 const ROW_ANIMATION_SUPPRESS_MS = 450;
-export const PANE_GAP_REM = 0.5;
+export const PANE_GAP_REM = 0.35;
 
 export default function useHeaderPane<RefType extends HTMLElement = HTMLDivElement>({
   ref: providedRef,

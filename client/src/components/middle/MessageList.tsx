@@ -198,7 +198,6 @@ const BOTTOM_SNAP_THRESHOLD = 7;
 
 const UNREAD_DIVIDER_TOP = 10;
 const SCROLL_DEBOUNCE = 200;
-const MESSAGE_ANIMATION_DURATION = 500;
 const SEND_FOCUS_DURATION = SCROLL_MAX_DURATION + ANIMATION_END_DELAY;
 const BOTTOM_FOCUS_MARGIN = 0.5 * REM;
 const FEW_MESSAGES_SCROLL_RISE = 4 * REM;
@@ -751,9 +750,14 @@ const MessageList = ({
     });
   });
 
-  const isMessageSendPendingRef = useRef(false);
-
   const handleContentResize = useLastCallback((growth: number) => {
+    if (
+      typeof document !== 'undefined'
+      && (document.body.classList.contains('is-resizing-left-column')
+        || document.body.classList.contains('is-animating-left-column'))
+    ) {
+      return;
+    }
     const container = containerRef.current;
     if (!container || growth <= 0) return;
 
@@ -775,10 +779,6 @@ const MessageList = ({
     // Retarget active glides before ignoring send-pending resizes
     if (isAnimatingScroll(container)) {
       restartCurrentScrollAnimation();
-      return;
-    }
-
-    if (isMessageSendPendingRef.current) {
       return;
     }
 
@@ -1083,20 +1083,6 @@ const MessageList = ({
       }, SEND_FOCUS_DURATION);
     }
 
-    if (wasMessageAdded) {
-      isMessageSendPendingRef.current = true;
-      clearTimeout(scrollSnapDisabledTimerRef.current);
-      scrollSnapDisabledTimerRef.current = undefined;
-
-      removeExtraClass(container, BOTTOM_SNAP_CLASS);
-
-      scrollSnapDisabledTimerRef.current = window.setTimeout(() => {
-        scrollSnapDisabledTimerRef.current = undefined;
-        isMessageSendPendingRef.current = false;
-        updateBottomSnapClass();
-      }, MESSAGE_ANIMATION_DURATION);
-    }
-
     requestMessageListReflow(() => {
       const { scrollTop, scrollHeight, offsetHeight } = container;
       const scrollOffset = scrollOffsetRef.current;
@@ -1143,56 +1129,43 @@ const MessageList = ({
         && (isAtBottom || wasAtBottomBeforeTypingDraft),
       );
 
-      const isFocusingActive = memoFocusingIdRef.current !== undefined;
-      const isAlreadyFocusing = isFocusingActive
-        || (currentLastMessageId !== undefined && memoFocusingIdRef.current === currentLastMessageId);
+      const isAlreadyFocusing = currentLastMessageId !== undefined
+        && memoFocusingIdRef.current === currentLastMessageId;
 
       // Animate incoming/outgoing message, but if app is in background mode, scroll to the first unread
-      const shouldAnimateAddedMessages = Boolean(
-        wasMessageAdded
-        && isAtBottom
-        && !isFocusingActive
-        && (!hasLiveTail || shouldReleaseLiveTail)
-        && (lastItemElement || firstUnreadElement),
+      const willAnimateAddedMessage = wasMessageAdded && isAtBottom && (!isAlreadyFocusing || shouldReleaseLiveTail) && (
+        !hasLiveTail || shouldReleaseLiveTail
       );
-
-      const isScrollToBottom = !isBackgroundModeActive() || !firstUnreadElement;
-      const targetElement = isScrollToBottom
-        ? (container.querySelector<HTMLElement>('.fab-trigger') || lastItemElement)
-        : firstUnreadElement;
-      const topReserve = getMessageListTopReserve(container);
-      const isFewMessagesScroll = container.parentElement?.classList.contains(FORCE_MESSAGES_SCROLL_CLASS);
-      const maxDistance = isFewMessagesScroll && isScrollToBottom
-        ? FEW_MESSAGES_SCROLL_RISE
-        : undefined;
-
-      const animateAddedMessagesScroll = shouldAnimateAddedMessages && targetElement
-        ? animateScroll({
+      if (willAnimateAddedMessage) {
+        const isScrollToBottom = !isBackgroundModeActive() || !firstUnreadElement;
+        const topReserve = getMessageListTopReserve(container);
+        const isFewMessagesScroll = container.parentElement?.classList.contains(FORCE_MESSAGES_SCROLL_CLASS);
+        const maxDistance = isFewMessagesScroll && isScrollToBottom
+          ? FEW_MESSAGES_SCROLL_RISE
+          : undefined;
+        animateScroll({
           container,
-          element: targetElement,
+          element: isScrollToBottom ? lastItemElement : firstUnreadElement,
           position: isScrollToBottom ? 'end' : 'start',
-          margin: isScrollToBottom ? bottomReserve : (BOTTOM_FOCUS_MARGIN + topReserve),
+          margin: BOTTOM_FOCUS_MARGIN + (isScrollToBottom ? bottomReserve : topReserve),
           topReserve,
           bottomReserve,
           maxDistance,
           forceDuration: noMessageSendingAnimation ? 0 : undefined,
-          shouldReturnMutationFn: true,
-          isScrollToBottom,
-          effectiveScrollHeight,
-        })
-        : undefined;
+        });
 
-      if (shouldAnimateAddedMessages && shouldReleaseLiveTail && effectiveLiveTailStartOriginalId !== undefined) {
-        clearTimeout(liveTailReleaseTimerRef.current);
+        if (shouldReleaseLiveTail && effectiveLiveTailStartOriginalId !== undefined) {
+          clearTimeout(liveTailReleaseTimerRef.current);
 
-        liveTailReleaseTimerRef.current = window.setTimeout(() => {
-          liveTailReleaseTimerRef.current = undefined;
-          setReleasedLiveTailStartOriginalId(effectiveLiveTailStartOriginalId);
-        }, SEND_FOCUS_DURATION);
+          liveTailReleaseTimerRef.current = window.setTimeout(() => {
+            liveTailReleaseTimerRef.current = undefined;
+            setReleasedLiveTailStartOriginalId(effectiveLiveTailStartOriginalId);
+          }, SEND_FOCUS_DURATION);
+        }
       }
 
       const isResized = prevContainerHeight !== undefined && prevContainerHeight !== containerHeight;
-      if (isAnimatingScroll(container)) {
+      if (isResized && isAnimatingScroll(container)) {
         return undefined;
       }
 
@@ -1216,7 +1189,7 @@ const MessageList = ({
           shouldReturnMutationFn: true,
         })
         : undefined;
-      const typingDraftTop = shouldRevealTypingDraft && lastItemElement
+      const typingDraftTop = !willAnimateAddedMessage && shouldRevealTypingDraft && lastItemElement
         ? getOffsetToContainer(lastItemElement, container).top
         : undefined;
       const typingDraftBottom = typingDraftTop !== undefined && lastItemElement
@@ -1224,7 +1197,7 @@ const MessageList = ({
         : undefined;
       const scrollTopBeforeUpdate = scrollTopBeforeUpdateRef.current;
       const viewportBottomBeforeUpdate = (scrollTopBeforeUpdate ?? scrollTop) + offsetHeight;
-      const typingDraftElement = typingDraftBottom !== undefined && typingDraftBottom > viewportBottomBeforeUpdate
+      const typingDraftElement = !willAnimateAddedMessage && typingDraftBottom !== undefined && typingDraftBottom > viewportBottomBeforeUpdate
         ? lastItemElement
         : undefined;
       const typingDraftScrollTop = typingDraftElement && typingDraftTop !== undefined
@@ -1276,7 +1249,7 @@ const MessageList = ({
         newScrollTop = typingDraftScrollTop;
       } else if (shouldRevealTypingDraft) {
         newScrollTop = scrollTop;
-      } else if (isAtBottom && (isResized || isScrollToBottom)) {
+      } else if (isAtBottom && isResized) {
         newScrollTop = scrollHeight - offsetHeight;
       } else if (anchor) {
         const newAnchorTop = anchor.getBoundingClientRect().top;
@@ -1299,7 +1272,15 @@ const MessageList = ({
       return () => {
         applyMessageListBottomInset(container, bottomReserve);
 
-        const animateScrollMutation = animateLiveTailScroll || animateTypingDraftScroll || animateAddedMessagesScroll;
+        if (willAnimateAddedMessage) {
+          scrollOffsetRef.current = Math.max(Math.ceil(effectiveScrollHeight - newScrollTop), offsetHeight);
+          requestMeasure(() => {
+            isReplacingHistoryRef.current = false;
+          });
+          return;
+        }
+
+        const animateScrollMutation = animateLiveTailScroll || animateTypingDraftScroll;
         if (animateScrollMutation) {
           const animationStartScrollTop = shouldRestoreBeforeTypingDraftAnimation && scrollTopBeforeUpdate !== undefined
             ? scrollTopBeforeUpdate

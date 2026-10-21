@@ -1,17 +1,83 @@
 import { Mutex } from 'async-mutex';
 
 import { concat } from '../../../util/encoding/buffer';
+import { getDCMirrors } from '../Utils';
 
 const closeError = new Error('WebSocket was closed');
-const CONNECTION_TIMEOUT = 12000;
-const MAX_TIMEOUT = 30000;
+const CANDIDATE_TIMEOUT = 5000;
+
+const LAST_WORKING_HOST = new Map<string, string>();
+const LAST_WORKING_PREFIX = new Map<number, string>();
+
+const DC_PLANET_NAMES: Record<string, number> = {
+  pluto: 1,
+  venus: 2,
+  aurora: 3,
+  vesta: 4,
+  flora: 5,
+};
+
+function getHostCandidates(ip: string): string[] {
+  let candidates: string[] = [];
+  let dcId: number | undefined;
+  let isDownload = false;
+
+  const wsMatch = ip.match(/^(?:zws|kws)(\d)(-1)?\.web\.telegram\.org$/i);
+  if (wsMatch) {
+    dcId = Number(wsMatch[1]);
+    isDownload = Boolean(wsMatch[2]);
+    candidates = getDCMirrors(dcId, isDownload);
+  } else {
+    const planetMatch = ip.match(/^(pluto|venus|aurora|vesta|flora)\.web\.telegram\.org$/i);
+    if (planetMatch) {
+      dcId = DC_PLANET_NAMES[planetMatch[1].toLowerCase()];
+      candidates = getDCMirrors(dcId, false);
+    } else {
+      candidates = [ip];
+    }
+  }
+
+  if (!candidates.includes(ip)) {
+    candidates = [ip, ...candidates];
+  }
+
+  const workingHost = LAST_WORKING_HOST.get(ip);
+  if (workingHost && candidates.includes(workingHost)) {
+    return [workingHost, ...candidates.filter((h) => h !== workingHost)];
+  }
+
+  if (dcId && LAST_WORKING_PREFIX.has(dcId)) {
+    const prefix = LAST_WORKING_PREFIX.get(dcId)!;
+    const preferred = candidates.find((c) => c.startsWith(prefix));
+    if (preferred) {
+      return [preferred, ...candidates.filter((h) => h !== preferred)];
+    }
+  }
+
+  if (candidates[0] !== ip && candidates.includes(ip)) {
+    return [ip, ...candidates.filter((h) => h !== ip)];
+  }
+
+  return candidates;
+}
+
+function recordWorkingHost(originalIp: string, host: string) {
+  LAST_WORKING_HOST.set(originalIp, host);
+  const match = host.match(/^(?:(zws|kws)\d|([a-z]+))(-1)?\.web\.telegram\.org$/i);
+  if (match) {
+    const prefix = match[1] || match[2];
+    const originalMatch = originalIp.match(/^(?:zws|kws)(\d)/i);
+    if (originalMatch) {
+      const dcId = Number(originalMatch[1]);
+      LAST_WORKING_PREFIX.set(dcId, prefix);
+    }
+  }
+}
 
 export default class PromisedWebSockets {
   private readonly mutex = new Mutex();
 
   private closed: boolean;
-
-  private timeout: number;
 
   private stream: Uint8Array;
 
@@ -25,12 +91,22 @@ export default class PromisedWebSockets {
 
   private disconnectedCallback: () => void;
 
+  private handleOffline: () => void;
+
   constructor(disconnectedCallback: () => void) {
     this.client = undefined;
     this.closed = true;
     this.stream = new Uint8Array(0);
     this.disconnectedCallback = disconnectedCallback;
-    this.timeout = CONNECTION_TIMEOUT;
+
+    this.handleOffline = () => {
+      this.close();
+      this.resolveRead?.(false);
+    };
+
+    if (typeof self !== 'undefined' && 'addEventListener' in self) {
+      self.addEventListener('offline', this.handleOffline);
+    }
   }
 
   async readExactly(number: number) {
@@ -86,41 +162,105 @@ export default class PromisedWebSockets {
     }
   }
 
-  connect(port: number, ip: string, isTestServer = false, isPremium = false) {
+  async connect(port: number, ip: string, isTestServer = false, isPremium = false) {
     this.stream = new Uint8Array(0);
     this.canRead = new Promise((resolve) => {
       this.resolveRead = resolve;
     });
     this.closed = false;
-    this.website = this.getWebSocketLink(ip, port, isTestServer, isPremium);
-    this.client = new WebSocket(this.website, 'binary');
-    this.client.binaryType = 'arraybuffer';
 
+    const candidates = getHostCandidates(ip);
+    let lastError: any;
+
+    for (const host of candidates) {
+      try {
+        await this.connectCandidate(port, host, isTestServer, isPremium);
+        recordWorkingHost(ip, host);
+        return this;
+      } catch (err: any) {
+        lastError = err;
+        // eslint-disable-next-line no-console
+        console.warn(`[PromisedWebSockets] Failed to connect to ${host}, trying next mirror...`, err);
+      }
+    }
+
+    this.closed = true;
+    this.resolveRead?.(false);
+    if (this.disconnectedCallback) {
+      this.disconnectedCallback();
+    }
+    throw lastError || new Error(`WebSocket failed to connect to any mirror for ${ip}`);
+  }
+
+  private connectCandidate(
+    port: number,
+    host: string,
+    isTestServer = false,
+    isPremium = false,
+  ): Promise<void> {
     return new Promise((resolve, reject) => {
-      if (!this.client) return;
       let hasResolved = false;
       let timeout: ReturnType<typeof globalThis.setTimeout> | undefined;
 
-      this.client.onopen = () => {
+      const website = this.getWebSocketLink(host, port, isTestServer, isPremium);
+      this.website = website;
+
+      let client: WebSocket;
+      try {
+        client = new WebSocket(website, 'binary');
+        client.binaryType = 'arraybuffer';
+      } catch (err) {
+        reject(err);
+        return;
+      }
+
+      this.client = client;
+
+      const cleanup = () => {
+        if (timeout) {
+          clearTimeout(timeout);
+          timeout = undefined;
+        }
+      };
+
+      client.onopen = () => {
+        if (hasResolved) return;
+        hasResolved = true;
+        cleanup();
         this.receive();
-        resolve(this);
-        hasResolved = true;
-        if (timeout) clearTimeout(timeout);
+        resolve();
       };
 
-      this.client.onerror = (error) => {
+      client.onerror = (error) => {
+        if (hasResolved) return;
+        hasResolved = true;
+        cleanup();
         // eslint-disable-next-line no-console
-        console.error('WebSocket error', error);
+        console.error(`WebSocket error (${host})`, error);
+        try {
+          client.close();
+        } catch (_) {}
         reject(error);
-        hasResolved = true;
-        if (timeout) clearTimeout(timeout);
       };
 
-      this.client.onclose = (event) => {
+      client.onclose = (event) => {
+        cleanup();
+        // Ignore events from stale clients replaced by newer attempts
+        if (this.client !== client) {
+          return;
+        }
+
         const { code, reason, wasClean } = event;
+
+        if (!hasResolved) {
+          hasResolved = true;
+          reject(new Error(`WebSocket closed before open (${host}). Code: ${code}, reason: ${reason}`));
+          return;
+        }
+
         if (code !== 1000) {
           // eslint-disable-next-line no-console
-          console.error(`Socket ${ip} closed. Code: ${code}, reason: ${reason}, was clean: ${wasClean}`);
+          console.error(`Socket ${host} closed. Code: ${code}, reason: ${reason}, was clean: ${wasClean}`);
         }
 
         this.resolveRead?.(false);
@@ -128,32 +268,16 @@ export default class PromisedWebSockets {
         if (this.disconnectedCallback) {
           this.disconnectedCallback();
         }
-        hasResolved = true;
-        if (timeout) clearTimeout(timeout);
       };
 
       timeout = setTimeout(() => {
         if (hasResolved) return;
-
-        reject(new Error('WebSocket connection timeout'));
-        this.resolveRead?.(false);
-        this.closed = true;
-        if (this.disconnectedCallback) {
-          this.disconnectedCallback();
-        }
-        this.client?.close();
-        this.timeout *= 2;
-        this.timeout = Math.min(this.timeout, MAX_TIMEOUT);
-        timeout = undefined;
-      }, this.timeout);
-
-      // CONTEST
-      // Seems to not be working, at least in a web worker
-
-      self.addEventListener('offline', () => {
-        this.close();
-        this.resolveRead?.(false);
-      });
+        hasResolved = true;
+        try {
+          client.close();
+        } catch (_) {}
+        reject(new Error(`WebSocket connection timeout (${host})`));
+      }, CANDIDATE_TIMEOUT);
     });
   }
 

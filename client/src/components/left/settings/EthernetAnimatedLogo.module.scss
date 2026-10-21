@@ -14,9 +14,9 @@
   user-select: none;
   box-sizing: border-box;
 
-  /* Ultra-Heavy Maximum Bold Display Typography */
-  font-family: "SF Pro Display", "SF Pro", "Arial Black", "Segoe UI Black", "Trebuchet MS", -apple-system, BlinkMacSystemFont, Roboto, sans-serif !important;
-  font-weight: 900 !important;
+  /* SF Pro Text Typography */
+  font-family: "SF Pro Text", "SF Pro", -apple-system, BlinkMacSystemFont, Roboto, sans-serif !important;
+  font-weight: 700 !important;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-size: clamp(2.6rem, 10vw, 4.4rem);
@@ -44,10 +44,8 @@
   width: 100%;
   max-width: 22.5rem;
   margin: 0 auto;
-  font-weight: 900 !important;
+  font-weight: 700 !important;
   color: var(--color-primary);
-  -webkit-text-stroke: 3px currentColor !important;
-  paint-order: stroke fill;
   text-shadow: 0 0 1px currentColor, 0 0 2px currentColor, 0 0 20px rgba(var(--color-primary-rgb, 135, 116, 225), 0.5);
 }
 
@@ -59,14 +57,11 @@
   width: 12.5%;
   min-width: 0;
   text-align: center;
-  font-weight: 900 !important;
-  -webkit-text-stroke: 3px currentColor !important;
-  paint-order: stroke fill;
+  font-weight: 700 !important;
   transition: transform 0.1s ease, color 0.1s ease, text-shadow 0.1s ease;
 
   &.scrambling {
     color: #ffffff;
-    -webkit-text-stroke: 3px #ffffff !important;
     text-shadow: 0 0 12px var(--color-primary), 0 0 26px rgba(var(--color-primary-rgb, 135, 116, 225), 0.95);
     transform: scale(1.1) translateY(-2px);
   }

@@ -257,7 +257,7 @@
     --folders-sidebar-width: 2.75rem;
     --window-controls-width: 0rem;
     --middle-header-height: 3rem;
-    --middle-header-gap: 0.5rem;
+    --middle-header-gap: 0.35rem;
     --column-header-height: 4rem;
     --emoji-size: 1.25em;
     --custom-emoji-size: var(--emoji-size);
@@ -351,6 +351,7 @@
 
     --middle-header-panes-height: 0px;
     --middle-header-player-height: 0px;
+    --middle-header-player-shift-y: 0px;
 
     body.is-ios {
       --layer-transition: 650ms cubic-bezier(0.22, 1, 0.36, 1);

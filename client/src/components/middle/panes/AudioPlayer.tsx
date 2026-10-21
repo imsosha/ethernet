@@ -1,21 +1,32 @@
-import { useEffect, useMemo, useRef } from '../../../lib/teact/teact';
+import {
+  useEffect, useLayoutEffect, useMemo, useRef, useState,
+} from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
-import type {
-  ApiAudio, ApiChat, ApiMessage, ApiPeer,
-  MediaContent,
+import {
+  ApiMediaFormat,
+  type ApiAudio, type ApiChat, type ApiMessage, type ApiPeer, type ApiWebPage,
+  type MediaContent,
 } from '../../../api/types';
 import type { ThreadId } from '../../../types';
 import type { IconName } from '../../../types/icons';
 
 import { PLAYBACK_RATE_FOR_AUDIO_MIN_DURATION } from '../../../config';
 import {
+  getAudioHasCover,
+  getChatAvatarHash,
   getMediaFormat,
-  getMessageContent, isMessageLocal,
+  getMediaHash,
+  getMessageContent,
+  getPhotoMediaHash,
+  getWebPageAudio,
+  getWebPagePhoto,
+  isMessageLocal,
 } from '../../../global/helpers';
 import { getPeerTitle } from '../../../global/helpers/peers';
 import {
   selectChat, selectChatMessage, selectEphemeralMessage, selectSender, selectTabState,
+  selectWebPageFromMessage,
 } from '../../../global/selectors';
 import { selectMessageMediaDuration } from '../../../global/selectors/media';
 import { makeTrackId } from '../../../util/audioPlayer';
@@ -55,6 +66,7 @@ type OwnProps = {
 
 type StateProps = {
   message?: ApiMessage;
+  webPage?: ApiWebPage;
   sender?: ApiPeer;
   chat?: ApiChat;
   mediaDuration?: number;
@@ -82,6 +94,7 @@ const DEFAULT_FAST_PLAYBACK_RATE = 2;
 
 const AudioPlayer = ({
   message,
+  webPage,
   mediaDuration,
   className,
   noUi,
@@ -115,11 +128,15 @@ const AudioPlayer = ({
   const isOpen = Boolean(message);
   const {
     message: renderingMessage,
+    webPage: renderingWebPage,
     sender: renderingSender,
     chat: renderingChat,
-  } = useFrozenProps({ message, sender, chat }, !isOpen);
+  } = useFrozenProps({
+    message, webPage, sender, chat,
+  }, !isOpen);
 
-  const { audio, voice, video } = renderingMessage ? getMessageContent(renderingMessage) : {} satisfies MediaContent;
+  const { audio: contentAudio, voice, video } = renderingMessage ? getMessageContent(renderingMessage) : {} satisfies MediaContent;
+  const audio = contentAudio || (renderingWebPage && getWebPageAudio(renderingWebPage));
   const isLocalMessage = Boolean(message && isMessageLocal(message));
   const isVoice = Boolean(voice || video);
   const isMusicSaved = Boolean(audio && savedMusicById?.[audio.id]);
@@ -131,6 +148,16 @@ const AudioPlayer = ({
   const mediaFormat = playableMedia && getMediaFormat(playableMedia, 'inline');
   const mediaData = useMedia(mediaHash, false, mediaFormat);
   const mediaMetadata = useMessageMediaMetadata(renderingMessage, renderingSender, renderingChat);
+
+  const mediaCoverHash = playableMedia ? getMediaHash(playableMedia, 'pictogram') : undefined;
+  const webPagePhoto = renderingWebPage && getWebPagePhoto(renderingWebPage);
+  const webPageCoverHash = webPagePhoto ? getPhotoMediaHash(webPagePhoto, 'pictogram') : undefined;
+  const messageCoverHash = useMessageMediaHash(renderingMessage, 'pictogram');
+  const coverHash = mediaCoverHash || webPageCoverHash || messageCoverHash;
+  const coverBlobUrl = useMedia(coverHash, false, ApiMediaFormat.BlobUrl);
+  const audioThumbnail = audio?.thumbnail?.dataUri;
+  const coverUrl = coverBlobUrl || audioThumbnail;
+  const hasCover = Boolean(coverUrl);
 
   const {
     playPause,
@@ -178,8 +205,12 @@ const AudioPlayer = ({
 
   useEffect(() => {
     if (isOpen && audio && !savedMusicById && !isSavedMusicLoading) {
-      loadSavedMusicIds();
+      const timer = window.setTimeout(() => {
+        loadSavedMusicIds();
+      }, 350);
+      return () => window.clearTimeout(timer);
     }
+    return undefined;
   }, [isOpen, audio, savedMusicById, isSavedMusicLoading, loadSavedMusicIds]);
 
   useEffect(() => {
@@ -193,6 +224,21 @@ const AudioPlayer = ({
       playPause();
     }
   }, [isPlaying, message?.isDeleting, playPause]);
+
+  useLayoutEffect(() => {
+    if (noUi) return undefined;
+    if (isOpen) {
+      document.documentElement.setAttribute('data-audio-player-open', 'true');
+      document.getElementById('MiddleColumn')?.classList.add('has-audio-player');
+    } else {
+      document.documentElement.removeAttribute('data-audio-player-open');
+      document.getElementById('MiddleColumn')?.classList.remove('has-audio-player');
+    }
+    return () => {
+      document.documentElement.removeAttribute('data-audio-player-open');
+      document.getElementById('MiddleColumn')?.classList.remove('has-audio-player');
+    };
+  }, [isOpen, noUi]);
 
   const handleClick = useLastCallback(() => {
     const { chatId, id } = renderingMessage!;
@@ -304,7 +350,11 @@ const AudioPlayer = ({
     return (
       <div
         className={buildClassName(
-          'AudioPlayer', 'full-width-player', 'compact-player', !isOpen && 'island-player-closing', className,
+          'AudioPlayer',
+          'full-width-player',
+          'compact-player',
+          !isOpen && 'island-player-closing',
+          className,
         )}
         dir={lang.isRtl ? 'rtl' : undefined}
         ref={ref}
@@ -340,10 +390,35 @@ const AudioPlayer = ({
 
   return (
     <div
-      className={buildClassName('AudioPlayer', 'full-width-player', !isOpen && 'island-player-closing', className)}
+      className={buildClassName(
+        'AudioPlayer',
+        'full-width-player',
+        !isOpen && 'island-player-closing',
+        className,
+      )}
       dir={lang.isRtl ? 'rtl' : undefined}
       ref={ref}
     >
+      <div
+        className={buildClassName(
+          'audio-player-icon-badge',
+          hasCover ? 'has-cover-image' : 'has-accent-color',
+        )}
+        style={coverUrl ? `background-image: url("${coverUrl}");` : undefined}
+        onClick={handleClick}
+      >
+        {hasCover ? (
+          <img
+            src={coverUrl}
+            alt=""
+            className="audio-player-preview-img"
+            draggable={false}
+            decoding="async"
+          />
+        ) : (
+          <Icon name={audio ? 'note' : 'microphone'} />
+        )}
+      </div>
       <div className="AudioPlayer-content" onClick={handleClick}>
         {audio ? renderAudio(audio) : renderVoice(lang('AttachAudio'), senderName)}
         <RippleEffect />
@@ -512,8 +587,10 @@ export default withGlobal<OwnProps>(
       ? selectChatMessage(global, chatId, messageId) || selectEphemeralMessage(global, chatId, messageId)
       : undefined;
 
+    const webPage = message ? selectWebPageFromMessage(global, message) : undefined;
     const sender = message && selectSender(global, message);
-    const chat = message && selectChat(global, message.chatId);
+    const chat = (message && selectChat(global, message.chatId))
+      || (chatId ? selectChat(global, chatId) : undefined);
     const {
       playbackRate, isMuted, isPlaybackRateActive, timestamp,
     } = selectTabState(global).audioPlayer;
@@ -523,6 +600,7 @@ export default withGlobal<OwnProps>(
 
     return {
       message,
+      webPage,
       sender,
       chat,
       volume,

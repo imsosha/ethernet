@@ -3,7 +3,8 @@ import { useEffect } from '@teact';
 import { createSignal } from '../../util/signals';
 import useLastCallback from '../useLastCallback';
 
-const [getIsInBackgroundLocal, setIsInBackground] = createSignal(!document.hasFocus());
+const checkIsInBackground = () => Boolean(document.hidden || !document.hasFocus());
+const [getIsInBackgroundLocal, setIsInBackground] = createSignal(checkIsInBackground());
 export const getIsInBackground = getIsInBackgroundLocal;
 
 function handleBlur() {
@@ -11,11 +12,16 @@ function handleBlur() {
 }
 
 function handleFocus() {
-  setIsInBackground(false);
+  setIsInBackground(checkIsInBackground());
+}
+
+function handleVisibility() {
+  setIsInBackground(checkIsInBackground());
 }
 
 window.addEventListener('blur', handleBlur);
 window.addEventListener('focus', handleFocus);
+document.addEventListener('visibilitychange', handleVisibility);
 
 export default function useBackgroundMode(
   onBlur?: AnyToVoidFunction,

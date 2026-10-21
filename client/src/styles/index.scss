@@ -11,11 +11,11 @@
 @use "composer-primitives";
 html,
 body {
-  --font-family: "SF Pro Display", "SF Pro Text", "SF Pro", sans-serif;
+  --font-family: "SF Pro Text", "SF Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-family-monospace: ui-monospace, "SF Mono", "Menlo", Monaco, Consolas, monospace;
-  --font-family-numbers-rounded: "SF Pro Rounded", "Numbers Rounded", "SF Pro Display", sans-serif;
-  --font-family-rounded: "SF Pro Rounded", "Nunito", "SF Pro Display", sans-serif;
-  --font-family-condensed: "SF Pro Text", "SF Pro Display", sans-serif;
+  --font-family-numbers-rounded: "SF Pro Rounded", "Numbers Rounded", "SF Pro Text", sans-serif;
+  --font-family-rounded: "SF Pro Rounded", "Nunito", "SF Pro Text", sans-serif;
+  --font-family-condensed: "SF Pro Text", sans-serif;
   --font-weight-thin: 200;
   --font-weight-light: 300;
   --font-weight-normal: 400;
@@ -74,8 +74,8 @@ html.theme-dark {
 
 body.is-ios,
 body.is-macos {
-  --font-family-rounded: "SF Pro Rounded", "Nunito", "SF Pro Display", sans-serif;
-  --font-family: "SF Pro Display", "SF Pro Text", "SF Pro", sans-serif;
+  --font-family-rounded: "SF Pro Rounded", "Nunito", "SF Pro Text", sans-serif;
+  --font-family: "SF Pro Text", "SF Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-weight-semibold: 600;
 }
 

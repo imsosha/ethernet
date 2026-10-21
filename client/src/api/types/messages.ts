@@ -151,6 +151,7 @@ export interface ApiAudio {
   performer?: string;
   title?: string;
   thumbnailSizes?: ApiPhotoSize[];
+  thumbnail?: ApiThumbnail;
 }
 
 export interface ApiVoice {

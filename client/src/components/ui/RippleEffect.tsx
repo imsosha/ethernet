@@ -27,22 +27,27 @@ const RippleEffect = () => {
   const handleMouseDown = useLastCallback((e: MouseEvent) => {
     if (e.button !== 0) return;
 
-    const parent = containerRef.current?.parentElement;
-    if (!parent) return;
+    const clientX = e.clientX;
+    const clientY = e.clientY;
 
-    const position = parent.getBoundingClientRect();
-    const rippleSize = parent.offsetWidth / 2;
+    requestAnimationFrame(() => {
+      const parent = containerRef.current?.parentElement;
+      if (!parent) return;
 
-    setRipples((prev) => [
-      ...prev,
-      {
-        x: e.clientX - position.x - (rippleSize / 2),
-        y: e.clientY - position.y - (rippleSize / 2),
-        size: rippleSize,
-      },
-    ]);
+      const position = parent.getBoundingClientRect();
+      const rippleSize = parent.offsetWidth / 2;
 
-    cleanUpDebounced();
+      setRipples((prev) => [
+        ...prev,
+        {
+          x: clientX - position.x - (rippleSize / 2),
+          y: clientY - position.y - (rippleSize / 2),
+          size: rippleSize,
+        },
+      ]);
+
+      cleanUpDebounced();
+    });
   });
 
   useEffect(() => {

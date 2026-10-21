@@ -605,7 +605,8 @@ addActionHandler('sendMessage', async (global, actions, payload): Promise<void> 
   const lastMessageId = threadId === MAIN_THREAD_ID
     ? selectChatLastMessageId(global, chatId!) : threadInfo?.lastMessageId;
 
-  const messagePriceInStars = await getPeerStarsForMessage(global, chatId!);
+  const peerForStars = selectPeer(global, chatId!);
+  const messagePriceInStars = peerForStars?.paidMessagesStars ? await getPeerStarsForMessage(global, chatId!) : undefined;
 
   const suggestedPostPrice = draftSuggestedPostInfo?.price;
   const suggestedPostCurrency = suggestedPostPrice?.currency || STARS_CURRENCY_CODE;
@@ -2466,7 +2467,7 @@ async function sendMessageOrReduceLocal<T extends GlobalState>(
 
 async function sendMessage<T extends GlobalState>(global: T, params: SendMessageParams) {
   // @optimization
-  if (params.replyInfo || IS_IOS) {
+  if (IS_IOS) {
     await rafPromise();
   }
 

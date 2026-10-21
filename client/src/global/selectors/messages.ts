@@ -1117,7 +1117,9 @@ export function selectCanAutoLoadMedia<T extends GlobalState>(
 
   const webPage = selectWebPageFromMessage(global, message);
   const isPhoto = Boolean(getMessagePhoto(message) || getWebPagePhoto(webPage));
-  const isVideo = Boolean(getMessageVideo(message) || getWebPageVideo(webPage));
+  const rawVideo = getMessageVideo(message) || getWebPageVideo(webPage);
+  const isRoundVideo = Boolean(rawVideo?.isRound);
+  const isVideo = Boolean(rawVideo);
   const isFile = Boolean(getMessageAudio(message) || getMessageVoice(message) || getMessageDocument(message));
 
   const {
@@ -1144,6 +1146,18 @@ export function selectCanAutoLoadMedia<T extends GlobalState>(
       canAutoLoadMediaInPrivateChats: canAutoLoadPhotoInPrivateChats,
       canAutoLoadMediaInGroups: canAutoLoadPhotoInGroups,
       canAutoLoadMediaInChannels: canAutoLoadPhotoInChannels,
+    });
+  }
+
+  if (isRoundVideo) {
+    return canAutoLoadMedia({
+      global,
+      chat,
+      sender,
+      canAutoLoadMediaFromContacts: canAutoLoadFileFromContacts,
+      canAutoLoadMediaInPrivateChats: canAutoLoadFileInPrivateChats,
+      canAutoLoadMediaInGroups: canAutoLoadFileInGroups,
+      canAutoLoadMediaInChannels: canAutoLoadFileInChannels,
     });
   }
 

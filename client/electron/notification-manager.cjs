@@ -1,5 +1,5 @@
 // Custom Notification Manager for Ethernet Telegram Client
-const { BrowserWindow, screen, ipcMain, pathToFileURL } = require('electron');
+const { BrowserWindow, screen, ipcMain, pathToFileURL, Notification: NativeNotification, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -38,7 +38,7 @@ function createNotificationWindow(mainWindow) {
       preload: path.join(__dirname, 'preload-notif.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
-      backgroundThrottling: false,
+      backgroundThrottling: true,
     },
   });
 
@@ -97,6 +97,10 @@ function setupNotificationIpc(mainWindowProvider) {
 
   ipcMain.handle('hermes:show-notification', handleShowNotif);
   ipcMain.handle('ethernet:show-notification', handleShowNotif);
+  ipcMain.handle('hermes:native-notifications-get', () => hermesSettings.getUseNativeNotifications());
+  ipcMain.handle('hermes:native-notifications-set', (_event, enabled) => hermesSettings.setUseNativeNotifications(enabled));
+  ipcMain.handle('ethernet:native-notifications-get', () => hermesSettings.getUseNativeNotifications());
+  ipcMain.handle('ethernet:native-notifications-set', (_event, enabled) => hermesSettings.setUseNativeNotifications(enabled));
 
   ipcMain.on('notif:clicked', (event, data) => {
     if (!isNotifSender(event)) return;
@@ -143,6 +147,78 @@ const hermesSettings = require('./hermes-settings.cjs');
 
 function showNotification(data, mainWindowProvider) {
   if (hermesSettings.getNotificationsDisabled()) return;
+
+  const isNative = Boolean(data?.isNative !== undefined ? data.isNative : hermesSettings.getUseNativeNotifications());
+
+  if (isNative) {
+    if (NativeNotification && NativeNotification.isSupported()) {
+      try {
+        let iconImage = undefined;
+        if (data && data.icon && typeof data.icon === 'string') {
+          if (data.icon.startsWith('data:image/')) {
+            try {
+              iconImage = nativeImage.createFromDataURL(data.icon);
+            } catch {}
+          } else if (fs.existsSync(data.icon)) {
+            try {
+              iconImage = nativeImage.createFromPath(data.icon);
+            } catch {}
+          }
+        }
+        if (!iconImage || iconImage.isEmpty()) {
+          const iconCandidates = [
+            path.join(__dirname, '..', 'public', 'icon-square-512x512.png'),
+            path.join(__dirname, '..', 'public', 'icon-dev-512x512.png'),
+            path.join(__dirname, '..', 'public', 'icon-square-192x192.png'),
+            path.join(__dirname, '..', 'release', '.icon-ico', 'icon.ico'),
+            path.join(__dirname, '..', 'ethernet.ico'),
+          ];
+          for (const cand of iconCandidates) {
+            if (fs.existsSync(cand)) {
+              try {
+                const img = nativeImage.createFromPath(cand);
+                if (img && !img.isEmpty()) {
+                  iconImage = img;
+                  break;
+                }
+              } catch {}
+            }
+          }
+        }
+
+        const notifOptions = {
+          title: String(data?.title || 'Ethernet'),
+          body: String(data?.body || ''),
+          silent: Boolean(data?.isSilent),
+        };
+        if (iconImage && !iconImage.isEmpty()) {
+          notifOptions.icon = iconImage;
+        }
+
+        const notif = new NativeNotification(notifOptions);
+
+        notif.on('click', () => {
+          const mainWindow = getActiveMainWindow(mainWindowProvider);
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            if (mainWindow.isMinimized()) mainWindow.restore();
+            mainWindow.show();
+            mainWindow.focus();
+            mainWindow.webContents.send('hermes:notification-clicked', {
+              chatId: data?.chatId,
+              messageId: data?.messageId,
+            });
+          }
+        });
+
+        notif.show();
+        return;
+      } catch (err) {
+        console.error('[NotificationManager] Native notification failed, falling back to custom window:', err);
+      }
+    }
+  }
+
+  // Тумблер выключен (по стандарту) — отображаем всплывающее окно Electron
   const mainWindow = getActiveMainWindow(mainWindowProvider);
   const win = createNotificationWindow(mainWindow);
   if (!win) return;

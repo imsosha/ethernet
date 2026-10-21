@@ -172,6 +172,25 @@ export function getDisplayName(entity: Entity) {
   return '';
 }
 
+export const DC_MIRRORS: Record<number, string[]> = {
+  1: ['zws1', 'kws1', 'pluto'],
+  2: ['zws2', 'kws2', 'venus'],
+  3: ['zws3', 'kws3', 'aurora'],
+  4: ['zws4', 'kws4', 'vesta'],
+  5: ['zws5', 'kws5', 'flora'],
+};
+
+export function getDCMirrors(dcId: number, downloadDC = false): string[] {
+  const prefixes = DC_MIRRORS[dcId] || [`zws${dcId}`];
+  const suffix = downloadDC ? '-1' : '';
+  return prefixes.map((prefix) => {
+    if (prefix.startsWith('zws') || prefix.startsWith('kws')) {
+      return `${prefix}${suffix}.web.telegram.org`;
+    }
+    return `${prefix}.web.telegram.org`;
+  });
+}
+
 /**
  * Returns the appropriate DC based on the id
  * @param dcId the id of the DC.

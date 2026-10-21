@@ -761,13 +761,14 @@ const MiddleSearch = ({
       className={buildClassName(
         styles.root,
         isActive && styles.active,
+        isActive && 'active',
         !isActive && isFullyHidden && 'visually-hidden', // `display: none` would prevent focus on iOS
         isFocused && styles.focused,
         isMobile && styles.mobile,
       )}
       ref={ref}
     >
-      <div className={styles.header}>
+      <div className={buildClassName(styles.header, 'middle-search-header')}>
         {!isMobile && (
           <Avatar
             className={styles.avatar}

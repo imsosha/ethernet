@@ -73,11 +73,12 @@ export function hasMessageText(message: MediaContainer) {
   const {
     action, text, sticker, photo, video, audio, voice, document, pollId, todo, dice,
     webPage, contact, invoice, location, game, storyData, giveaway, giveawayResults, paidMedia,
+    richMessage,
   } = message.content;
 
   if (pollId) return false;
 
-  return Boolean(text) || !(
+  return Boolean(text || richMessage) || !(
     sticker || photo || video || audio || voice || document || contact || pollId || todo || webPage
     || invoice || location || game || storyData || giveaway || giveawayResults || dice
     || paidMedia || action?.type === 'phoneCall'
@@ -172,11 +173,12 @@ export function getMessageTextWithFallback(lang: LangFn, message: MediaContainer
     return message.content.text;
   }
 
-  const richMessageText = message.content.richMessage
-    ? getRichMessagePreviewText(message.content.richMessage)
-    : undefined;
+  if (message.content.richMessage) {
+    const richMessageText = getRichMessagePreviewText(message.content.richMessage);
+    return { text: richMessageText || '' };
+  }
 
-  return { text: richMessageText || lang('MessageUnsupported') };
+  return { text: lang('MessageUnsupported') };
 }
 
 export function getMessageCustomShape(message: ApiMessage): boolean {

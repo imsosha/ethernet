@@ -5,6 +5,7 @@ import {
 import { getActions } from '../../global';
 
 import buildClassName from '../../util/buildClassName';
+import { getIsLeftColumnCollapsed, setIsLeftColumnCollapsed } from '../../util/leftColumnCollapsed';
 
 import useOldLang from '../../hooks/useOldLang';
 
@@ -53,6 +54,9 @@ const NewChatButton: FC<OwnProps> = ({
     if (isAccountFrozen) {
       openFrozenAccountModal();
       return;
+    }
+    if (getIsLeftColumnCollapsed()) {
+      setIsLeftColumnCollapsed(false);
     }
     setIsMenuOpen(!isMenuOpen);
   }, [isMenuOpen, isAccountFrozen]);

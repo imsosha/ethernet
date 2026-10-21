@@ -15,7 +15,8 @@ import { toSignedLittleBuffer } from '../Helpers';
 // eslint-disable-next-line no-restricted-globals
 const CACHING_SUPPORTED = typeof self !== 'undefined' && self.localStorage !== undefined;
 
-const CACHE_KEY = 'GramJs:apiCache:4';
+const CACHE_KEY = 'GramJs:apiCache:231';
+const LEGACY_CACHE_KEY = 'GramJs:apiCache:4';
 
 const BOOL_TRUE = bufferFromHex('b5757299');
 const BOOL_FALSE = bufferFromHex('379779bc');
@@ -24,6 +25,13 @@ type UnsaveVirtualClass = Record<string, any>;
 
 export function buildApiFromTlSchema() {
     let definitions;
+    if (CACHING_SUPPORTED) {
+        try {
+            localStorage.removeItem(LEGACY_CACHE_KEY);
+        } catch {
+            // Ignore storage errors
+        }
+    }
     const fromCache = CACHING_SUPPORTED && loadFromCache();
 
     if (fromCache) {
@@ -226,7 +234,17 @@ function createClasses(classesType: 'constructor' | 'request', params: Generatio
                                 continue;
                             }
 
-                            args[argName] = flagValue ? getArgFromReader(reader, arg, classes) : undefined;
+                            if (argName === 'rich_message' || argName === 'richMessage') {
+                                try {
+                                    args[argName] = flagValue ? getArgFromReader(reader, arg, classes) : undefined;
+                                } catch (err) {
+                                    // eslint-disable-next-line no-console
+                                    console.warn('[GramJS] Failed to read rich_message:', err);
+                                    args[argName] = undefined;
+                                }
+                            } else {
+                                args[argName] = flagValue ? getArgFromReader(reader, arg, classes) : undefined;
+                            }
                         } else {
                             args[argName] = getArgFromReader(reader, arg, classes);
                         }

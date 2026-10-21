@@ -2,8 +2,15 @@
 
 #Settings {
   height: 100%;
+  overflow-x: hidden !important;
+  max-width: 100%;
   user-select: none !important;
   -webkit-user-select: none !important;
+
+  > .Transition_slide {
+    overflow-x: hidden !important;
+    max-width: 100%;
+  }
 
   .settings-content,
   .Island,
@@ -103,6 +110,9 @@
 
 .settings-content {
   overflow-y: scroll;
+  overflow-x: hidden !important;
+  max-width: 100%;
+  box-sizing: border-box;
 
   height: calc(100% - var(--column-header-height));
   padding: 1rem;

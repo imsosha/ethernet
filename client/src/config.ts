@@ -86,6 +86,7 @@ export const MESSAGE_LIST_VIEWPORT_LIMIT = MESSAGE_LIST_SLICE * 2;
 
 export const ARCHIVE_MINIMIZED_HEIGHT = 36;
 export const CHAT_HEIGHT_PX = 72;
+export const CHAT_COLLAPSED_HEIGHT_PX = 72;
 export const TOPIC_HEIGHT_PX = 65;
 export const PEER_PICKER_ITEM_HEIGHT_PX = 56;
 export const CHAT_LIST_SLICE = isBigScreen ? 30 : 25;
@@ -199,7 +200,7 @@ export const STARS_ICON_PLACEHOLDER = '⭐';
 export const STARS_CURRENCY_CODE = 'XTR';
 
 export const MIN_SCREEN_WIDTH_FOR_STATIC_RIGHT_COLUMN = 1275; // px
-export const MIN_SCREEN_WIDTH_FOR_STATIC_LEFT_COLUMN = 925; // px
+export const MIN_SCREEN_WIDTH_FOR_STATIC_LEFT_COLUMN = 600; // px
 export const MOBILE_SCREEN_MAX_WIDTH = 600; // px
 export const MOBILE_SCREEN_LANDSCAPE_MAX_WIDTH = 950; // px
 export const MOBILE_SCREEN_LANDSCAPE_MAX_HEIGHT = 450; // px

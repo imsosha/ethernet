@@ -19,6 +19,8 @@ import styles from './CustomEmoji.module.scss';
 
 import blankImg from '../../assets/blank.png';
 
+export const DEFAULT_CUSTOM_EMOJI_LOOP_LIMIT = 3;
+
 type OwnProps = {
   ref?: ElementRef<HTMLDivElement>;
   className?: string;
@@ -28,6 +30,7 @@ type OwnProps = {
   noPlay?: boolean;
   noVideoOnMobile?: boolean;
   loopLimit?: number;
+  noLoopLimit?: boolean;
   shouldNotLoop?: boolean;
   isSelectable?: boolean;
   withSharedAnimation?: boolean;
@@ -65,6 +68,7 @@ const CustomEmoji = ({
   noPlay,
   noVideoOnMobile,
   loopLimit,
+  noLoopLimit,
   shouldNotLoop,
   isSelectable,
   withSharedAnimation,
@@ -91,6 +95,10 @@ const CustomEmoji = ({
   const { customEmoji: customEmojiFromDocumentId, canPlay } = useCustomEmoji(documentId);
   const customEmoji = customEmojiFromDocumentId || sticker;
 
+  const effectiveLoopLimit = noLoopLimit
+    ? undefined
+    : (loopLimit !== undefined ? loopLimit : DEFAULT_CUSTOM_EMOJI_LOOP_LIMIT);
+
   const loopCountRef = useRef(0);
   const [shouldPlay, setShouldPlay] = useState(true);
 
@@ -98,11 +106,11 @@ const CustomEmoji = ({
   const customColor = useDynamicColorListener(containerRef, undefined, !hasCustomColor);
 
   const handleVideoEnded = useLastCallback((e) => {
-    if (!loopLimit) return;
+    if (!effectiveLoopLimit) return;
 
     loopCountRef.current += 1;
 
-    if (loopCountRef.current >= loopLimit) {
+    if (loopCountRef.current >= effectiveLoopLimit) {
       setShouldPlay(false);
       e.currentTarget.currentTime = 0;
     } else {
@@ -112,13 +120,28 @@ const CustomEmoji = ({
   });
 
   const handleStickerLoop = useLastCallback(() => {
-    if (!loopLimit) return;
+    if (!effectiveLoopLimit) return;
 
     loopCountRef.current += 1;
 
-    if (loopCountRef.current >= loopLimit) {
+    if (loopCountRef.current >= effectiveLoopLimit) {
       setShouldPlay(false);
     }
+  });
+
+  const handleMouseEnter = useLastCallback(() => {
+    if (!shouldPlay) {
+      loopCountRef.current = 0;
+      setShouldPlay(true);
+    }
+  });
+
+  const handleClick = useLastCallback(() => {
+    if (!shouldPlay) {
+      loopCountRef.current = 0;
+      setShouldPlay(true);
+    }
+    onClick?.();
   });
 
   const isHq = customEmoji?.stickerSetInfo && selectIsAlwaysHighPriorityEmoji(getGlobal(), customEmoji.stickerSetInfo);
@@ -132,7 +155,8 @@ const CustomEmoji = ({
         'custom-emoji',
         'emoji',
       )}
-      onClick={onClick}
+      onClick={handleClick}
+      onMouseEnter={handleMouseEnter}
       onAnimationEnd={onAnimationEnd}
       data-entity-type={ApiMessageEntityTypes.CustomEmoji}
       data-document-id={documentId}
@@ -162,7 +186,7 @@ const CustomEmoji = ({
           thumbClassName={styles.thumb}
           fullMediaClassName={styles.media}
           shouldLoop={!shouldNotLoop}
-          loopLimit={loopLimit}
+          loopLimit={effectiveLoopLimit}
           skipPreview={skipPreview}
           shouldPreloadPreview={!skipPreview && (shouldPreloadPreview || noPlay || !canPlay)}
           forceOnHeavyAnimation={forceOnHeavyAnimation}

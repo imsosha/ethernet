@@ -179,7 +179,7 @@ const SettingsEthernetFunctions: FC<OwnProps> = ({ isActive, onReset }) => {
 
   return (
     <div className="settings-content custom-scroll">
-      {/* 1. DISABLE ADS & NOTIFICATIONS AT THE VERY TOP */}
+      {/* 1. GENERAL APP SETTINGS (ADS, TRAY) */}
       <Island className={styles.sectionIsland}>
         <div
           className={styles.row}
@@ -192,21 +192,6 @@ const SettingsEthernetFunctions: FC<OwnProps> = ({ isActive, onReset }) => {
               label={getEthernetString(lang, 'EthernetDisableAds')}
               checked={activeSettings.disableAds}
               onCheck={(checked) => updateSetting('disableAds', checked)}
-            />
-          </div>
-        </div>
-
-        <div
-          className={styles.row}
-          onClick={() => updateSetting('disableAllNotifications', !activeSettings.disableAllNotifications)}
-        >
-          <span className={styles.titleText}>{getEthernetString(lang, 'EthernetDisableAllNotifications')}</span>
-          <div className={styles.switcherWrapper}>
-            <Switcher
-              id="disable-all-notifications-switch"
-              label={getEthernetString(lang, 'EthernetDisableAllNotifications')}
-              checked={Boolean(activeSettings.disableAllNotifications)}
-              onCheck={(checked) => updateSetting('disableAllNotifications', checked)}
             />
           </div>
         </div>
@@ -227,7 +212,73 @@ const SettingsEthernetFunctions: FC<OwnProps> = ({ isActive, onReset }) => {
         </div>
       </Island>
 
-      {/* 2. GHOST ESSENTIALS CARD */}
+      {/* 2. NOTIFICATIONS CARD */}
+      <IslandTitle className={styles.islandHeaderTitle}>
+        {getEthernetString(lang, 'EthernetNotifications')}
+      </IslandTitle>
+      <Island className={styles.sectionIsland}>
+        <div
+          className={styles.row}
+          onClick={() => updateSetting('disableAllNotifications', !activeSettings.disableAllNotifications)}
+        >
+          <div className={styles.titleWithSubtitle}>
+            <span className={styles.titleText}>{getEthernetString(lang, 'EthernetDisableAllNotifications')}</span>
+            <span className={styles.subtitleText}>{getEthernetString(lang, 'EthernetDisableAllNotificationsDesc')}</span>
+          </div>
+          <div className={styles.switcherWrapper} onClick={(e) => e.stopPropagation()}>
+            <Switcher
+              id="disable-all-notifications-switch"
+              label={getEthernetString(lang, 'EthernetDisableAllNotifications')}
+              checked={Boolean(activeSettings.disableAllNotifications)}
+              onCheck={(checked) => updateSetting('disableAllNotifications', checked)}
+            />
+          </div>
+        </div>
+
+        <div
+          className={styles.row}
+          onClick={() => {
+            const nextVal = !activeSettings.useNativeNotifications;
+            updateSetting('useNativeNotifications', nextVal);
+            if (nextVal && window.ethernetDesktop?.showNotification) {
+              window.ethernetDesktop.showNotification({
+                title: 'Ethernet',
+                body: getEthernetString(lang, 'EthernetNativeNotificationsTest'),
+                isNative: true,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              });
+            }
+          }}
+        >
+          <div className={styles.titleWithSubtitle}>
+            <span className={styles.titleText}>{getEthernetString(lang, 'EthernetNativeNotifications')}</span>
+            <span className={styles.subtitleText}>{getEthernetString(lang, 'EthernetNativeNotificationsDesc')}</span>
+          </div>
+          <div className={styles.switcherWrapper} onClick={(e) => e.stopPropagation()}>
+            <Switcher
+              id="use-native-notifications-switch"
+              label={getEthernetString(lang, 'EthernetNativeNotifications')}
+              checked={Boolean(activeSettings.useNativeNotifications)}
+              onCheck={(checked) => {
+                updateSetting('useNativeNotifications', checked);
+                if (checked && window.ethernetDesktop?.showNotification) {
+                  window.ethernetDesktop.showNotification({
+                    title: 'Ethernet',
+                    body: getEthernetString(lang, 'EthernetNativeNotificationsTest'),
+                    isNative: true,
+                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                  });
+                }
+              }}
+            />
+          </div>
+        </div>
+      </Island>
+
+      {/* 3. SPY FUNCTIONS (GHOST MODE) */}
+      <IslandTitle className={styles.islandHeaderTitle}>
+        {getEthernetString(lang, 'SpyEssentials')}
+      </IslandTitle>
       <Island className={styles.sectionIsland}>
         {/* Top Header Row: Ghost Mode Title & Accordion on Left, Global Selector & Master Switch on Right */}
         <div className={styles.row}>
@@ -441,10 +492,7 @@ const SettingsEthernetFunctions: FC<OwnProps> = ({ isActive, onReset }) => {
         </div>
       </Island>
 
-      {/* 4. SPY ESSENTIALS CARD (including Save in Bot Dialogs) */}
-      <IslandTitle className={styles.islandHeaderTitle}>
-        {getEthernetString(lang, 'SpyEssentials')}
-      </IslandTitle>
+      {/* Save Deleted / Edits History Card */}
       <Island className={styles.sectionIsland}>
         <div
           className={styles.row}

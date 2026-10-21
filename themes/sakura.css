@@ -1,0 +1,105 @@
+/* Ethernet Telegram Theme: Sakura */
+/* @name Sakura */
+/* @description Нежная тема с мягкими розовыми оттенками */
+/* @author Ethernet */
+/* @version 1.0.0 */
+/* @icon <svg viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="_SakuraGrad" x1="0" y1="0" x2="1" y2="0" gradientUnits="userSpaceOnUse" gradientTransform="matrix(200,0,0,200,0,100)"><stop offset="0" stop-color="#ff8c80"/><stop offset="1" stop-color="#ffa087"/></linearGradient></defs><g transform="matrix(0,5,-5,0,1000,0)"><path d="M200,61.765L200,138.235C200,172.324 172.324,200 138.235,200L61.765,200C27.676,200 0,172.324 0,138.235L0,61.765C0,27.676 27.676,0 61.765,0L138.235,0C172.324,0 200,27.676 200,61.765Z" fill="url(#_SakuraGrad)"/></g><g transform="matrix(9.381012,0,0,9.381012,500,500)"><g transform="matrix(1,0,0,1,-41.666667,-41.666667)"><g transform="matrix(4.166667,0,0,4.166667,0,0)"><path d="M12.66,8.76C13.099,7.673 12.296,6.251 11.45,5.354C11.778,4.164 11.821,2.532 10.924,1.779C10.027,1.026 8.427,1.349 7.311,1.877C6.281,1.197 4.743,0.651 3.748,1.271C2.754,1.891 2.568,3.514 2.725,4.738C1.761,5.507 0.766,6.802 1.049,7.939C1.332,9.076 2.817,9.755 4.029,9.983C4.463,11.138 5.387,12.484 6.556,12.567C7.384,12.625 8.176,12.036 8.78,11.304C10,12.824 10.862,14.431 11.335,16.01C10.612,14.93 9.115,14 6,14C6,18.155 9.042,19.003 11,19.003L14.2,19.005C14.2,16.282 13.214,13.095 10.91,10.104C11.693,9.857 12.389,9.427 12.66,8.76M8.283,8.54C7.894,8.782 7.445,8.911 6.987,8.911C5.645,8.911 4.54,7.806 4.54,6.464C4.54,5.62 4.976,4.834 5.692,4.387C6.08,4.145 6.529,4.016 6.987,4.016C8.33,4.016 9.434,5.121 9.434,6.464C9.434,7.307 8.998,8.094 8.282,8.54L8.283,8.54ZM14.02,12.248C15.103,14.418 15.689,16.701 15.698,18.953C18.996,16.582 19,12.206 19,8.003C19,8.003 15.33,9.037 14.02,12.248" fill="#ffffff" fill-rule="nonzero"/></g></g></g></svg> */
+/* @wallpaper {"file":"data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+CjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+Cjxzdmcgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgdmlld0JveD0iMCAwIDE5MjAgMTA4MCIgdmVyc2lvbj0iMS4xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB4bWw6c3BhY2U9InByZXNlcnZlIiB4bWxuczpzZXJpZj0iaHR0cDovL3d3dy5zZXJpZi5jb20vIiBzdHlsZT0iZmlsbC1ydWxlOmV2ZW5vZGQ7Y2xpcC1ydWxlOmV2ZW5vZGQ7c3Ryb2tlLWxpbmVqb2luOnJvdW5kO3N0cm9rZS1taXRlcmxpbWl0OjI7Ij4KICAgIDxyZWN0IHg9IjAiIHk9IjAiIHdpZHRoPSIxOTIwIiBoZWlnaHQ9IjEwODAiIHN0eWxlPSJmaWxsOnVybCgjX0xpbmVhcjEpOyIvPgogICAgPGcgdHJhbnNmb3JtPSJtYXRyaXgoOC42NjUwNTgsMCwwLDguNjY1MDU4LDE1NTguOTU1OTAxLDcxOC45NTU5MDEpIj4KICAgICAgICA8ZyB0cmFuc2Zvcm09Im1hdHJpeCgxLDAsMCwxLC00MS42NjY2NjcsLTQxLjY2NjY2NykiPgogICAgICAgICAgICA8ZyB0cmFuc2Zvcm09Im1hdHJpeCg0LjE2NjY2NywwLDAsNC4xNjY2NjcsMCwwKSI+CiAgICAgICAgICAgICAgICA8cGF0aCBkPSJNMTIuNjYsOC43NkMxMy4wOTksNy42NzMgMTIuMjk2LDYuMjUxIDExLjQ1LDUuMzU0QzExLjc3OCw0LjE2NCAxMS44MjEsMi41MzIgMTAuOTI0LDEuNzc5QzEwLjAyNywxLjAyNiA4LjQyNywxLjM0OSA3LjMxMSwxLjg3N0M2LjI4MSwxLjE5NyA0Ljc0MywwLjY1MSAzLjc0OCwxLjI3MUMyLjc1NCwxLjg5MSAyLjU2OCwzLjUxNCAyLjcyNSw0LjczOEMxLjc2MSw1LjUwNyAwLjc2Niw2LjgwMiAxLjA0OSw3LjkzOUMxLjMzMiw5LjA3NiAyLjgxNyw5Ljc1NSA0LjAyOSw5Ljk4M0M0LjQ2MywxMS4xMzggNS4zODcsMTIuNDg0IDYuNTU2LDEyLjU2N0M3LjM4NCwxMi42MjUgOC4xNzYsMTIuMDM2IDguNzgsMTEuMzA0QzEwLDEyLjgyNCAxMC44NjIsMTQuNDMxIDExLjMzNSwxNi4wMUMxMC42MTIsMTQuOTMgOS4xMTUsMTQgNiwxNEM2LDE4LjE1NSA5LjA0MiwxOS4wMDMgMTEsMTkuMDAzTDE0LjIsMTkuMDA1QzE0LjIsMTYuMjgyIDEzLjIxNCwxMy4wOTUgMTAuOTEsMTAuMTA0QzExLjY5Myw5Ljg1NyAxMi4zODksOS40MjcgMTIuNjYsOC43Nk04LjI4Myw4LjU0QzcuODk0LDguNzgyIDcuNDQ1LDguOTExIDYuOTg3LDguOTExQzUuNjQ1LDguOTExIDQuNTQsNy44MDYgNC41NCw2LjQ2NEM0LjU0LDUuNjIgNC45NzYsNC44MzQgNS42OTIsNC4zODdDNi4wOCw0LjE0NSA2LjUyOSw0LjAxNiA2Ljk4Nyw0LjAxNkM4LjMzLDQuMDE2IDkuNDM0LDUuMTIxIDkuNDM0LDYuNDY0QzkuNDM0LDcuMzA3IDguOTk4LDguMDk0IDguMjgyLDguNTRMOC4yODMsOC41NFpNMTQuMDIsMTIuMjQ4QzE1LjEwMywxNC40MTggMTUuNjg5LDE2LjcwMSAxNS42OTgsMTguOTUzQzE4Ljk5NiwxNi41ODIgMTksMTIuMjA2IDE5LDguMDAzQzE5LDguMDAzIDE1LjMzLDkuMDM3IDE0LjAyLDEyLjI0OCIgc3R5bGU9ImZpbGw6d2hpdGU7ZmlsbC1ydWxlOm5vbnplcm87Ii8+CiAgICAgICAgICAgIDwvZz4KICAgICAgICA8L2c+CiAgICA8L2c+CiAgICA8ZGVmcz4KICAgICAgICA8bGluZWFyR3JhZGllbnQgaWQ9Il9MaW5lYXIxIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMCIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiIGdyYWRpZW50VHJhbnNmb3JtPSJtYXRyaXgoMTkyMCwwLDAsMTA4MCwwLDU0MCkiPjxzdG9wIG9mZnNldD0iMCIgc3R5bGU9InN0b3AtY29sb3I6cmdiKDI1NSwxMzksMTE1KTtzdG9wLW9wYWNpdHk6MSIvPjxzdG9wIG9mZnNldD0iMSIgc3R5bGU9InN0b3AtY29sb3I6cmdiKDI1NSwxNDAsMTQwKTtzdG9wLW9wYWNpdHk6MSIvPjwvbGluZWFyR3JhZGllbnQ+CiAgICA8L2RlZnM+Cjwvc3ZnPgo=","kind":"image","slug":"sakura-bg"} */
+/* @plugins [{"id":"sakura","name":"Сакура","enabled":true}] */
+
+:root {
+  /* Акцентный цвет: мягкий персиково-розовый #ff8c80 */
+  --color-primary: #ff8c80;
+  --color-primary-rgb: 255, 140, 128;
+  --color-primary-shade: color-mix(in srgb, #ff8c80 88%, #2d1f23);
+  --color-primary-shade-darker: color-mix(in srgb, #ff8c80 75%, #2d1f23);
+  --color-primary-shade-rgb: 230, 115, 105;
+  --color-primary-tint: color-mix(in srgb, #ff8c80 14%, transparent);
+  --color-primary-opacity: color-mix(in srgb, #ff8c80 18%, transparent);
+  --color-primary-opacity-hover: color-mix(in srgb, #ff8c80 28%, transparent);
+  --color-active: #ff8c80;
+  --color-active-darker: #e5776d;
+  --accent-color: #ff8c80;
+  --accent-background-color: color-mix(in srgb, #ff8c80 16%, transparent);
+  --accent-background-active-color: color-mix(in srgb, #ff8c80 26%, transparent);
+  --color-interactive-active: #ff8c80;
+
+  /* Теплые пастельные темные тона (не строгий черный!) */
+  --color-background: #241a1e;
+  --color-background-secondary: #2d2026;
+  --color-background-secondary-accent: #3a2931;
+  --color-background-sidebar: #1e1518;
+  --color-background-selected: #48313c;
+  --color-borders: #45303a;
+  --color-dividers: #38262f;
+
+  /* Текст и ссылки */
+  --color-text: #fdefef;
+  --color-links: #ff9e93;
+  --color-text-secondary: #d8b2bb;
+  --color-text-meta-colored: #ffb8b0;
+  --color-send-button: #ff8c80;
+  --color-icon-buttons: #ffdfe3;
+
+  /* Сообщения и чаты */
+  --color-background-own: #522d3a;
+  --color-chat-active: #442a35;
+  --color-chat-hover: rgba(255, 140, 128, 0.08);
+  --color-interactive-hover: rgba(255, 140, 128, 0.09);
+  --color-item-hover: rgba(255, 140, 128, 0.08);
+
+  /* Закругления и стекло */
+  --border-radius-ui: 16px;
+  --border-radius-topbar: 24px;
+  --border-radius-folders-sidebar: 1.125rem;
+  --border-radius-messages: 16px;
+  --border-radius-buttons: 12px;
+  --border-radius-input: 18px;
+  --border-radius-avatars: 50%;
+  --blur-strength: 12px;
+  --blur-glare: 30%;
+  --blur-refraction: 50%;
+  --blur-sidebar: true;
+  --blur-header: true;
+  --blur-bubbles: true;
+  --blur-menus: true;
+  --animation-duration: 260ms;
+  --animation-curve: 0.2, 0.8, 0.2, 1;
+  --chat-width: wide;
+  --message-align-own: right;
+  --message-align-other: left;
+  --profile-open-mode: shift;
+  --media-message-width: standard;
+  --custom-background: url('data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+CjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+Cjxzdmcgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgdmlld0JveD0iMCAwIDE5MjAgMTA4MCIgdmVyc2lvbj0iMS4xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB4bWw6c3BhY2U9InByZXNlcnZlIiB4bWxuczpzZXJpZj0iaHR0cDovL3d3dy5zZXJpZi5jb20vIiBzdHlsZT0iZmlsbC1ydWxlOmV2ZW5vZGQ7Y2xpcC1ydWxlOmV2ZW5vZGQ7c3Ryb2tlLWxpbmVqb2luOnJvdW5kO3N0cm9rZS1taXRlcmxpbWl0OjI7Ij4KICAgIDxyZWN0IHg9IjAiIHk9IjAiIHdpZHRoPSIxOTIwIiBoZWlnaHQ9IjEwODAiIHN0eWxlPSJmaWxsOnVybCgjX0xpbmVhcjEpOyIvPgogICAgPGcgdHJhbnNmb3JtPSJtYXRyaXgoOC42NjUwNTgsMCwwLDguNjY1MDU4LDE1NTguOTU1OTAxLDcxOC45NTU5MDEpIj4KICAgICAgICA8ZyB0cmFuc2Zvcm09Im1hdHJpeCgxLDAsMCwxLC00MS42NjY2NjcsLTQxLjY2NjY2NykiPgogICAgICAgICAgICA8ZyB0cmFuc2Zvcm09Im1hdHJpeCg0LjE2NjY2NywwLDAsNC4xNjY2NjcsMCwwKSI+CiAgICAgICAgICAgICAgICA8cGF0aCBkPSJNMTIuNjYsOC43NkMxMy4wOTksNy42NzMgMTIuMjk2LDYuMjUxIDExLjQ1LDUuMzU0QzExLjc3OCw0LjE2NCAxMS44MjEsMi41MzIgMTAuOTI0LDEuNzc5QzEwLjAyNywxLjAyNiA4LjQyNywxLjM0OSA3LjMxMSwxLjg3N0M2LjI4MSwxLjE5NyA0Ljc0MywwLjY1MSAzLjc0OCwxLjI3MUMyLjc1NCwxLjg5MSAyLjU2OCwzLjUxNCAyLjcyNSw0LjczOEMxLjc2MSw1LjUwNyAwLjc2Niw2LjgwMiAxLjA0OSw3LjkzOUMxLjMzMiw5LjA3NiAyLjgxNyw5Ljc1NSA0LjAyOSw5Ljk4M0M0LjQ2MywxMS4xMzggNS4zODcsMTIuNDg0IDYuNTU2LDEyLjU2N0M3LjM4NCwxMi42MjUgOC4xNzYsMTIuMDM2IDguNzgsMTEuMzA0QzEwLDEyLjgyNCAxMC44NjIsMTQuNDMxIDExLjMzNSwxNi4wMUMxMC42MTIsMTQuOTMgOS4xMTUsMTQgNiwxNEM2LDE4LjE1NSA5LjA0MiwxOS4wMDMgMTEsMTkuMDAzTDE0LjIsMTkuMDA1QzE0LjIsMTYuMjgyIDEzLjIxNCwxMy4wOTUgMTAuOTEsMTAuMTA0QzExLjY5Myw5Ljg1NyAxMi4zODksOS40MjcgMTIuNjYsOC43Nk04LjI4Myw4LjU0QzcuODk0LDguNzgyIDcuNDQ1LDguOTExIDYuOTg3LDguOTExQzUuNjQ1LDguOTExIDQuNTQsNy44MDYgNC41NCw2LjQ2NEM0LjU0LDUuNjIgNC45NzYsNC44MzQgNS42OTIsNC4zODdDNi4wOCw0LjE0NSA2LjUyOSw0LjAxNiA2Ljk4Nyw0LjAxNkM4LjMzLDQuMDE2IDkuNDM0LDUuMTIxIDkuNDM0LDYuNDY0QzkuNDM0LDcuMzA3IDguOTk4LDguMDk0IDguMjgyLDguNTRMOC4yODMsOC41NFpNMTQuMDIsMTIuMjQ4QzE1LjEwMywxNC40MTggMTUuNjg5LDE2LjcwMSAxNS42OTgsMTguOTUzQzE4Ljk5NiwxNi41ODIgMTksMTIuMjA2IDE5LDguMDAzQzE5LDguMDAzIDE1LjMzLDkuMDM3IDE0LjAyLDEyLjI0OCIgc3R5bGU9ImZpbGw6d2hpdGU7ZmlsbC1ydWxlOm5vbnplcm87Ii8+CiAgICAgICAgICAgIDwvZz4KICAgICAgICA8L2c+CiAgICA8L2c+CiAgICA8ZGVmcz4KICAgICAgICA8bGluZWFyR3JhZGllbnQgaWQ9Il9MaW5lYXIxIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMCIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiIGdyYWRpZW50VHJhbnNmb3JtPSJtYXRyaXgoMTkyMCwwLDAsMTA4MCwwLDU0MCkiPjxzdG9wIG9mZnNldD0iMCIgc3R5bGU9InN0b3AtY29sb3I6cmdiKDI1NSwxMzksMTE1KTtzdG9wLW9wYWNpdHk6MSIvPjxzdG9wIG9mZnNldD0iMSIgc3R5bGU9InN0b3AtY29sb3I6cmdiKDI1NSwxNDAsMTQwKTtzdG9wLW9wYWNpdHk6MSIvPjwvbGluZWFyR3JhZGllbnQ+CiAgICA8L2RlZnM+Cjwvc3ZnPgo=') !important;
+}
+
+/* Мягкие розовые акценты элементов */
+.Button.primary,
+.Button.confirm {
+  background: #ff8c80 !important;
+  color: #241a1e !important;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(255, 140, 128, 0.3) !important;
+}
+.Button.primary:hover,
+.Button.confirm:hover {
+  background: #ffa196 !important;
+  box-shadow: 0 6px 18px rgba(255, 140, 128, 0.45) !important;
+}
+
+/* Розовые акцентные бейджи и иконки */
+.badge,
+.unread-count {
+  background-color: #ff8c80 !important;
+  color: #241a1e !important;
+  font-weight: bold;
+}
+
+/* Скроллбары в стиле темы */
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 140, 128, 0.25) !important;
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 140, 128, 0.45) !important;
+}

@@ -187,8 +187,10 @@ const Video = <T,>({
     withShouldRender: true,
   });
 
+  const isGif = Boolean(!isPaidPreview && video.isGif);
   const [playProgress, setPlayProgress] = useState<number>(0);
   const handleTimeUpdate = useLastCallback((e: React.SyntheticEvent<HTMLVideoElement>) => {
+    if (isGif) return;
     setPlayProgress(Math.max(0, e.currentTarget.currentTime - 1));
   });
 
@@ -279,7 +281,7 @@ const Video = <T,>({
           playsInline
           disablePictureInPicture
           draggable={!isProtected}
-          onTimeUpdate={handleTimeUpdate}
+          onTimeUpdate={!isGif ? handleTimeUpdate : undefined}
           onReady={markPlayerReady}
         />
       )}

@@ -173,6 +173,7 @@ export function buildApiEphemeralMessage(mtpMessage: GramJs.EphemeralMessage): A
     media: mtpMessage.media,
     replyMarkup: mtpMessage.replyMarkup,
     replyTo: mtpMessage.replyTo,
+    richMessage: mtpMessage.richMessage,
   });
 
   return {

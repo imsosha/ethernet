@@ -3,9 +3,12 @@
 .ChatReportPane {
   @include mixins.middle-header-pane-content;
 
+  --pane-content-radius: calc(var(--border-radius-topbar, var(--border-radius-pane)) - 0.25rem);
+
   display: flex;
   align-items: stretch;
   height: auto;
+  gap: 0.25rem;
 
   body.no-page-transitions & {
     .ripple-container {
@@ -16,8 +19,21 @@
   &--Button {
     flex: 1 1 50%;
     height: auto;
-    border-radius: var(--pane-content-radius);
+    border-radius: var(--pane-content-radius) !important;
     white-space: nowrap;
+    transform: translateZ(0);
+    will-change: background-color;
+    transition: background-color 0.15s ease-out, color 0.15s ease-out !important;
+
+    &:first-child {
+      border-top-left-radius: var(--pane-content-radius) !important;
+      border-bottom-left-radius: var(--pane-content-radius) !important;
+    }
+
+    &:last-child {
+      border-top-right-radius: var(--pane-content-radius) !important;
+      border-bottom-right-radius: var(--pane-content-radius) !important;
+    }
   }
 
   &--Checkbox {

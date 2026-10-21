@@ -11,6 +11,9 @@ import type {
   ApiPageTableRow,
   ApiPhoto,
   ApiRichText,
+  ApiInlineButtonType,
+  ApiPageButton,
+  ApiRichButtonStyle,
 } from '../../types';
 
 import {
@@ -68,6 +71,11 @@ export function buildApiPageMediaContext(
   };
 }
 
+export function isGramJs<T = any>(obj: any, className: string, clazz?: any): obj is T {
+  if (!obj) return false;
+  return (clazz && obj instanceof clazz) || (obj as any).className === className;
+}
+
 function buildApiPagePhotosById(
   photos: GramJs.TypePhoto[],
   context?: PageRepairContext,
@@ -75,7 +83,7 @@ function buildApiPagePhotosById(
   photos.forEach((photo) => addPagePhotoToLocalDb(photo, context));
 
   return photos.reduce<Record<string, ApiPhoto>>((acc, photo) => {
-    if (photo instanceof GramJs.Photo) {
+    if (isGramJs(photo, 'Photo', GramJs.Photo)) {
       acc[String(photo.id)] = buildApiPhoto(photo);
     }
 
@@ -91,7 +99,7 @@ function buildApiPageDocumentsById(
 
   return documents.reduce<Record<string, ApiPageDocument>>((acc, document) => {
     const apiDocument = buildApiPageDocument(document);
-    if (document instanceof GramJs.Document && apiDocument) {
+    if (isGramJs(document, 'Document', GramJs.Document) && apiDocument) {
       acc[String(document.id)] = apiDocument;
     }
 
@@ -252,6 +260,30 @@ export function buildApiRichText(text: GramJs.TypeRichText, context: PageMediaCo
     };
   }
 
+  if (text instanceof GramJs.TextDiff) {
+    return {
+      type: 'diff',
+      text: buildApiRichText(text.text, context),
+      oldText: buildApiRichText(text.oldText, context),
+    };
+  }
+
+  if (text instanceof GramJs.TextButton) {
+    return {
+      type: 'button',
+      text: buildApiRichText(text.text, context),
+      buttonType: buildApiInlineButtonType(text.type),
+      style: text.style ? buildApiRichButtonStyle(text.style) : undefined,
+    };
+  }
+
+  if (text instanceof GramJs.TextTonAddress) {
+    return {
+      type: 'tonAddress',
+      text: buildApiRichText(text.text, context),
+    };
+  }
+
   return { type: 'empty' };
 }
 
@@ -308,11 +340,12 @@ export function buildApiPageBlock(block: GramJs.TypePageBlock, context: PageMedi
     return { type: 'list', items: block.items.map((item) => buildApiPageListItem(item, context)) };
   }
 
-  if (block instanceof GramJs.PageBlockBlockquote) {
+  if (block instanceof GramJs.PageBlockBlockquote || block instanceof GramJs.PageBlockBlockquoteOld) {
     return {
       type: 'blockquote',
       text: buildApiRichText(block.text, context),
       caption: buildApiRichText(block.caption, context),
+      canCollapse: 'collapsed' in block ? block.collapsed : undefined,
     };
   }
 
@@ -348,11 +381,26 @@ export function buildApiPageBlock(block: GramJs.TypePageBlock, context: PageMedi
     };
   }
 
-  if (block instanceof GramJs.PageBlockVideo) {
-    const video = getPageDocument(context, block.videoId);
-    if (video?.mediaType !== 'video') {
+  if (isGramJs<GramJs.PageBlockVideo>(block, 'PageBlockVideo', GramJs.PageBlockVideo)) {
+    const doc = getPageDocument(context, block.videoId);
+    if (!doc) {
       return { type: 'unsupported' };
     }
+
+    const video: ApiVideo = doc.mediaType === 'video' ? doc : {
+      mediaType: 'video',
+      id: doc.id,
+      mimeType: doc.mimeType || 'video/mp4',
+      duration: 0,
+      fileName: ('fileName' in doc && doc.fileName) ? doc.fileName : 'animation.mp4',
+      width: ('width' in doc && doc.width) ? doc.width : 320,
+      height: ('height' in doc && doc.height) ? doc.height : 240,
+      supportsStreaming: true,
+      isGif: true,
+      thumbnail: doc.thumbnail,
+      thumbnailSizes: doc.thumbnailSizes,
+      size: doc.size,
+    };
 
     return {
       type: 'video',
@@ -437,10 +485,21 @@ export function buildApiPageBlock(block: GramJs.TypePageBlock, context: PageMedi
   }
 
   if (block instanceof GramJs.PageBlockAudio) {
-    const audio = getPageDocument(context, block.audioId);
-    if (audio?.mediaType !== 'audio') {
+    const doc = getPageDocument(context, block.audioId);
+    if (!doc || (doc.mediaType !== 'audio' && doc.mediaType !== 'document')) {
       return { type: 'unsupported' };
     }
+
+    const audio: ApiAudio = doc.mediaType === 'audio' ? doc : {
+      mediaType: 'audio',
+      id: doc.id,
+      fileName: doc.fileName || 'audio.mp3',
+      thumbnailSizes: doc.thumbnailSizes,
+      thumbnail: doc.thumbnail,
+      size: doc.size,
+      mimeType: doc.mimeType,
+      duration: 0,
+    };
 
     return { type: 'audio', audio, caption: buildApiPageCaption(block.caption, context) };
   }
@@ -456,6 +515,7 @@ export function buildApiPageBlock(block: GramJs.TypePageBlock, context: PageMedi
       rows: block.rows.map((row) => buildApiPageTableRow(row, context)),
       isBordered: block.bordered,
       isStriped: block.striped,
+      isCompact: block.compact,
     };
   }
 
@@ -531,16 +591,57 @@ export function buildApiPageBlock(block: GramJs.TypePageBlock, context: PageMedi
   }
 
   if (block instanceof GramJs.PageBlockThinking) {
-    return { type: 'thinking', text: buildApiRichText(block.text, context) };
+    return {
+      type: 'thinking',
+      text: buildApiRichText(block.text, context),
+    };
+  }
+
+  if (isGramJs<GramJs.PageBlockButtonRow>(block, 'PageBlockButtonRow', GramJs.PageBlockButtonRow)) {
+    const align = block.alignLeft ? 'left' : block.alignCenter ? 'center' : block.alignRight ? 'right' : undefined;
+    return {
+      type: 'buttonRow',
+      buttons: (block.buttons || []).map((btn) => buildApiPageButton(btn, context)),
+      align,
+    };
+  }
+
+  if (isGramJs<GramJs.PageBlockDocument>(block, 'PageBlockDocument', GramJs.PageBlockDocument)) {
+    const doc = getPageDocument(context, block.documentId);
+    if (!doc) {
+      return { type: 'unsupported' };
+    }
+
+    const document: ApiDocument = doc.mediaType === 'document' ? doc : {
+      mediaType: 'document',
+      id: doc.id,
+      size: doc.size,
+      mimeType: doc.mimeType || 'application/octet-stream',
+      fileName: ('fileName' in doc && doc.fileName) ? doc.fileName : 'document',
+      thumbnail: doc.thumbnail,
+      thumbnailSizes: doc.thumbnailSizes,
+    };
+
+    return {
+      type: 'document',
+      document,
+      caption: buildApiPageCaption(block.caption, context),
+    };
   }
 
   return { type: 'unsupported' };
 }
 
-function buildApiPageCaption(caption: GramJs.TypePageCaption, context: PageMediaContext): ApiPageCaption {
+function buildApiPageCaption(caption?: GramJs.TypePageCaption, context?: PageMediaContext): ApiPageCaption {
+  const text = caption && 'text' in caption && caption.text && context
+    ? buildApiRichText(caption.text, context)
+    : { type: 'empty' as const };
+  const credit = caption && 'credit' in caption && caption.credit && context
+    ? buildApiRichText(caption.credit, context)
+    : { type: 'empty' as const };
   return {
-    text: buildApiRichText(caption.text, context),
-    credit: buildApiRichText(caption.credit, context),
+    text,
+    credit,
   };
 }
 
@@ -656,4 +757,71 @@ function addPageDocumentToLocalDb(document: GramJs.TypeDocument, context?: PageR
   }
 
   addDocumentToLocalDb(repairableDocument);
+}
+
+export function buildApiInlineButtonType(buttonType: GramJs.TypeInlineButtonType): ApiInlineButtonType {
+  if (isGramJs<GramJs.InlineButtonTypeUrl>(buttonType, 'InlineButtonTypeUrl', GramJs.InlineButtonTypeUrl)) {
+    return { type: 'url', url: buttonType.url };
+  }
+  if (isGramJs<GramJs.InlineButtonTypeUrlAuth>(buttonType, 'InlineButtonTypeUrlAuth', GramJs.InlineButtonTypeUrlAuth)) {
+    return {
+      type: 'urlAuth',
+      url: buttonType.url,
+      buttonId: buttonType.buttonId,
+      fwdText: buttonType.fwdText,
+    };
+  }
+  if (isGramJs<GramJs.InlineButtonTypeWebView>(buttonType, 'InlineButtonTypeWebView', GramJs.InlineButtonTypeWebView)) {
+    return { type: 'webView', url: buttonType.url };
+  }
+  if (isGramJs<GramJs.InlineButtonTypeCallback>(buttonType, 'InlineButtonTypeCallback', GramJs.InlineButtonTypeCallback)) {
+    return {
+      type: 'callback',
+      data: buttonType.data,
+      requiresPassword: buttonType.requiresPassword || undefined,
+    };
+  }
+  if (isGramJs<GramJs.InlineButtonTypeGame>(buttonType, 'InlineButtonTypeGame', GramJs.InlineButtonTypeGame)) {
+    return { type: 'game' };
+  }
+  if (isGramJs<GramJs.InlineButtonTypeBuy>(buttonType, 'InlineButtonTypeBuy', GramJs.InlineButtonTypeBuy)) {
+    return { type: 'buy' };
+  }
+  if (isGramJs<GramJs.InlineButtonTypeSwitchInline>(buttonType, 'InlineButtonTypeSwitchInline', GramJs.InlineButtonTypeSwitchInline)) {
+    return {
+      type: 'switchInline',
+      query: buttonType.query,
+      isSamePeer: buttonType.samePeer || undefined,
+    };
+  }
+  if (isGramJs<GramJs.InlineButtonTypeUserProfile>(buttonType, 'InlineButtonTypeUserProfile', GramJs.InlineButtonTypeUserProfile)) {
+    return {
+      type: 'userProfile',
+      userId: buildApiPeerId(buttonType.userId, 'user'),
+    };
+  }
+  if (isGramJs<GramJs.InlineButtonTypeCopy>(buttonType, 'InlineButtonTypeCopy', GramJs.InlineButtonTypeCopy)) {
+    return {
+      type: 'copy',
+      copyText: buttonType.copyText,
+    };
+  }
+  return { type: 'disabled' };
+}
+
+export function buildApiRichButtonStyle(style: GramJs.RichButtonStyle): ApiRichButtonStyle {
+  return {
+    isPrimary: style.bgPrimary || undefined,
+    isDanger: style.bgDanger || undefined,
+    isSuccess: style.bgSuccess || undefined,
+    isLink: style.link || undefined,
+  };
+}
+
+export function buildApiPageButton(pageButton: GramJs.PageButton, context: PageMediaContext): ApiPageButton {
+  return {
+    text: buildApiRichText(pageButton.text, context),
+    buttonType: pageButton.type ? buildApiInlineButtonType(pageButton.type) : { type: 'disabled' },
+    style: pageButton.style ? buildApiRichButtonStyle(pageButton.style) : undefined,
+  };
 }

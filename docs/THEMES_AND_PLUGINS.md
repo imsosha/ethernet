@@ -36,14 +36,17 @@
 
 ## 2. Система Тем (Theme Engine)
 
-### 2.1. Архитектура и формат тем
-Тема представляет собой валидный **CSS-файл** с объявлением переменных в блоке `:root` и дополнительными кастомными CSS-правилами. 
-Файлы тем хранятся в каталоге `themes/<theme-name>.css`.
+### 2.1. Архитектура и форматы тем и плагинов
+Клиент Ethernet поддерживает:
+1. **Универсальный пакет (`.eth`)** — единый стандартный формат для дистрибуции тем, плагинов и комплексных бандлов. Представляет собой валидный структурированный JSON с полем `format: "ethernet-v1"`.
+   - Если `type: "theme"` (или содержит поле `css`): упаковывает цветовую схему, геометрию, обои и **массив зависимых плагинов** (`plugins: [...]`).
+   - Если `type: "plugin"` (или содержит поле `code`): упаковывает исполняемый JavaScript-код плагина, объявленные разрешения песочницы, метаданные и SVG-иконку.
+   - Если `type: "bundle"`: одновременно содержит и тему, и набор независимых плагинов.
+   - Принцип импорта: Ethernet автоматически инспектирует файл при открытии или Drag & Drop. Темы сохраняются в `themes/`, а плагины устанавливаются в `plugins/` с бейджем принадлежности к теме.
+2. **Классический CSS (`.css`)** — файл со списком переменных `:root`, дополнительными CSS-правилами и блоком метаданных в JSDoc-заголовке.
+3. **Классический JS (`.js`)** — отдельный JavaScript-файл плагина с заголовком JSDoc (`@name`, `@version`, `@permissions`).
 
-При активации темы клиент:
-1. Инжектирует CSS с высоким приоритетом (`!important`).
-2. Парсит значения переменных и обновляет параметры мода (блюр, скругления, анимации).
-3. Автоматически загружает и включает привязанные к теме видео- или фото-обои.
+---
 
 ### 2.2. Полная таблица CSS-переменных
 
@@ -93,14 +96,18 @@
 
 ---
 
-### 2.3. Метаданные темы и настройки мода
-В начале CSS-файла темы можно указать метаданные в комментариях или блоке `:root`:
+### 2.3. Метаданные темы, SVG-логотипы и встроенные плагины
 
+#### В формате CSS:
+В начале CSS-файла указываются метаданные через директивы:
 ```css
 /*
-  Theme: Cyberpunk Neon
-  Author: Ethernet Community
-  Version: 1.0.0
+  @name Cyberpunk Neon
+  @author Ethernet Community
+  @version 1.0.0
+  @description Неоновая тема со встроенным визуальным плагином
+  @icon <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+  @plugins [{"id":"neon-glow","name":"Neon Glow","code":"..."}]
 */
 
 :root {
@@ -120,6 +127,53 @@
   --border-radius-messages: 16px;
   --border-radius-buttons: 10px;
   --blur-strength: 12px;
+}
+```
+
+#### В формате универсального пакета (.eth):
+
+**Пример 1: Тема с зависимыми плагинами (`theme.eth`):**
+```json
+{
+  "format": "ethernet-v1",
+  "type": "theme",
+  "name": "Cyberpunk Neon",
+  "version": "1.0.0",
+  "author": "Ethernet Community",
+  "description": "Универсальный пакет темы с плагинами",
+  "icon": "<svg viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"...\"/></svg>",
+  "css": ":root { ... }",
+  "wallpaper": {
+    "file": "neon.mp4",
+    "kind": "video"
+  },
+  "plugins": [
+    {
+      "id": "neon-particles",
+      "name": "Neon Particles",
+      "version": "1.0.0",
+      "description": "Фоновые частицы для темы Cyberpunk Neon",
+      "icon": "<svg viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"10\" fill=\"currentColor\"/></svg>",
+      "code": "(function() { ... })();",
+      "permissions": ["dom.style"]
+    }
+  ]
+}
+```
+
+**Пример 2: Автономный плагин (`plugin.eth`):**
+```json
+{
+  "format": "ethernet-v1",
+  "type": "plugin",
+  "id": "security-inspector",
+  "name": "Аудит разрешений",
+  "version": "1.0.2",
+  "author": "Ethernet",
+  "description": "Инспектор песочницы: тестирование и мониторинг доступа к данным",
+  "icon": "<svg viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"...\"/></svg>",
+  "permissions": ["credentials", "telegram.store", "network.intercept"],
+  "code": "(function() { /* код плагина */ })();"
 }
 ```
 
@@ -181,18 +235,41 @@
 
 ### 3.1. Структура и жизненный цикл плагина
 Каждый плагин представляет собой директорию в каталоге `plugins/<plugin_id>/`:
-1. `manifest.json` — описание плагина:
+1. `manifest.json` — описание плагина, его иконка, привязка к теме и запрашиваемые разрешения:
    ```json
    {
      "name": "Ghost Mode Pro",
      "description": "Скрывает статус 'В сети', набор текста и чтение сообщений",
      "version": "1.0.0",
-     "author": "User"
+     "author": "User",
+     "icon": "<svg viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M12 2a9 9 0 0 0-9 9c0 4.97 9 11 9 11s9-6.03 9-11a9 9 0 0 0-9-9z\"/></svg>",
+     "themeDependency": "Cyberpunk Neon",
+     "permissions": ["dom.style", "network.intercept"]
    }
    ```
 2. `index.js` — исполняемый JavaScript-код плагина в самовызывающейся функции (IIFE).
+   Метаданные также могут быть объявлены прямо в заголовке `index.js`:
+   ```javascript
+   /**
+    * @name Ghost Mode Pro
+    * @description Скрывает статус 'В сети', набор текста и чтение сообщений
+    * @version 1.0.0
+    * @author User
+    * @icon <svg viewBox="0 0 24 24"><path fill="currentColor" d="..."/></svg>
+    * @themeDependency Cyberpunk Neon
+    * @permissions dom.style, network.intercept
+    */
+   (function () {
+     const { log, api, addStyle } = window.ethernet;
+     // ...
+   })();
+   ```
 
-Плагины автоматически подключаются при загрузке клиента (`<script src="/ethernet/plugins/<id>/index.js">`) и имеют полный доступ к DOM страницы и API Ethernet.
+- **SVG-иконка плагина (`@icon`)**: отображается в качестве визуального логотипа в списке плагинов.
+- **Привязка к теме (`themeDependency`)**: плагин получает в интерфейсе бейдж `🎨 Требуется для темы: [Название темы]`, информирующий пользователя о назначении плагина.
+- **Версионирование**: считывается как стандартная семантическая версия (например, `1.0.0`) и отображается в виде `v1.0.0`.
+
+Плагины автоматически подключаются при загрузке клиента (`<script src="/ethernet/plugins/<id>/index.js">`) и выполняются в изолированной безопасной песочнице.
 
 ---
 

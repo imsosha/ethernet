@@ -211,6 +211,33 @@ const RichText = ({
     case 'cashtag':
     case 'bankCard':
       return renderNestedText();
+    case 'tonAddress':
+      return (
+        <span className="text-entity-link" dir="auto">
+          {renderNestedText()}
+        </span>
+      );
+    case 'button': {
+      const isUrl = text.buttonType.type === 'url';
+      if (isUrl) {
+        return (
+          <a
+            href={text.buttonType.url}
+            className="text-entity-link"
+            target="_blank"
+            rel="noopener noreferrer"
+            dir="auto"
+          >
+            {renderNestedText()}
+          </a>
+        );
+      }
+      return (
+        <span className="text-entity-link" dir="auto">
+          {renderNestedText()}
+        </span>
+      );
+    }
     case 'math':
       return <Latex source={text.source} />;
     case 'image':
@@ -220,6 +247,45 @@ const RichText = ({
           width={text.width}
           height={text.height}
         />
+      );
+    case 'diff':
+      return (
+        <span className={styles.diffWrapper}>
+          {hasRichText(text.oldText) && (
+            <del className={styles.diffDeleted}>
+              <RichText
+                text={text.oldText}
+                unsupportedText={unsupportedText}
+                containerId={containerId}
+                pageUrl={pageUrl}
+                chatId={chatId}
+                messageId={messageId}
+                threadId={threadId}
+                observeIntersectionForLoading={observeIntersectionForLoading}
+                observeIntersectionForPlaying={observeIntersectionForPlaying}
+                sharedCanvasRef={sharedCanvasRef}
+                sharedCanvasHqRef={sharedCanvasHqRef}
+              />
+            </del>
+          )}
+          {hasRichText(text.text) && (
+            <ins className={styles.diffInserted}>
+              <RichText
+                text={text.text}
+                unsupportedText={unsupportedText}
+                containerId={containerId}
+                pageUrl={pageUrl}
+                chatId={chatId}
+                messageId={messageId}
+                threadId={threadId}
+                observeIntersectionForLoading={observeIntersectionForLoading}
+                observeIntersectionForPlaying={observeIntersectionForPlaying}
+                sharedCanvasRef={sharedCanvasRef}
+                sharedCanvasHqRef={sharedCanvasHqRef}
+              />
+            </ins>
+          )}
+        </span>
       );
     default:
       return renderUnsupportedText(unsupportedText, text);

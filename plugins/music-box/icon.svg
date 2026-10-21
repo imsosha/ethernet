@@ -1,0 +1,18 @@
+<svg width="100%" height="100%" viewBox="0 0 200 200" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+    <defs>
+        <linearGradient id="musicbox-plug-grad" x1="0" y1="0" x2="1" y2="0" gradientUnits="userSpaceOnUse" gradientTransform="matrix(200,0,0,200,0,100)">
+            <stop offset="0" style="stop-color:rgb(213,255,0);stop-opacity:1"/>
+            <stop offset="1" style="stop-color:rgb(170,204,0);stop-opacity:1"/>
+        </linearGradient>
+    </defs>
+    <g transform="matrix(0,1,-1,0,200,0)">
+        <path d="M200,61.765L200,138.235C200,172.324 172.324,200 138.235,200L61.765,200C27.676,200 0,172.324 0,138.235L0,61.765C0,27.676 27.676,0 61.765,0L138.235,0C172.324,0 200,27.676 200,61.765Z" fill="url(#musicbox-plug-grad)"/>
+    </g>
+    <g transform="matrix(1.73022,0,0,1.73022,100,100)">
+        <g transform="matrix(1,0,0,1,-50,-50)">
+            <g transform="matrix(4.166667,0,0,4.166667,0,0)">
+                <path d="M21.719,6.279L21.719,7.449C21.719,8.429 21.329,9.269 20.639,9.759C20.209,10.079 19.679,10.229 19.129,10.229C18.789,10.229 18.449,10.179 18.099,10.059L12.719,8.269L12.719,17.999C12.719,20.619 10.589,22.749 7.969,22.749C5.349,22.749 3.219,20.619 3.219,17.999C3.219,15.379 5.349,13.249 7.969,13.249C9.229,13.249 10.369,13.749 11.219,14.549L11.219,3.999C11.219,3.029 11.619,2.189 12.309,1.689C12.999,1.199 13.919,1.089 14.839,1.389L19.259,2.869C20.619,3.319 21.719,4.849 21.719,6.279" fill="#ffffff" fill-rule="nonzero"/>
+            </g>
+        </g>
+    </g>
+</svg>

@@ -108,3 +108,51 @@
 .unread {
   color: var(--color-text);
 }
+
+:global(:root:not(.is-resizing-left-column)[data-left-column-collapsed="true"]),
+:global(:root.left-column-is-collapsed),
+:global(#LeftColumn.is-collapsed) {
+  .root:not(.minimized) {
+    height: 4.5rem !important;
+    padding: 0 0.3125rem !important;
+    box-sizing: border-box !important;
+
+    :global(.ListItem-button) {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      padding: 0 !important;
+      min-height: 3.625rem !important;
+      height: 3.625rem !important;
+      width: 3.625rem !important;
+      margin: 0 !important;
+    }
+  }
+
+  .root {
+    .avatarWrapper {
+      margin: 0 !important;
+      transition: margin 250ms cubic-bezier(0.33, 1, 0.68, 1) !important;
+    }
+
+    .info {
+      opacity: 0 !important;
+      visibility: hidden !important;
+      max-width: 0 !important;
+      min-width: 0 !important;
+      pointer-events: none !important;
+      overflow: hidden !important;
+      white-space: nowrap !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      transition: opacity 250ms ease, visibility 250ms !important;
+    }
+  }
+
+  .root.minimized {
+    :global(.ListItem-button) {
+      padding: 0.375rem 0 !important;
+      justify-content: center !important;
+    }
+  }
+}

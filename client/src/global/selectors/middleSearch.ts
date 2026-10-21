@@ -20,6 +20,21 @@ export function selectCurrentMiddleSearch<T extends GlobalState>(
   return selectTabState(global, tabId).middleSearch.byChatThreadKey[chatThreadKey];
 }
 
+export function selectMiddleSearch<T extends GlobalState>(
+  global: T,
+  chatId?: string,
+  threadId?: ThreadId,
+  ...[tabId = getCurrentTabId()]: TabArgs<T>
+) {
+  if (!chatId || !threadId) {
+    return undefined;
+  }
+
+  const chatThreadKey = buildChatThreadKey(chatId, threadId);
+
+  return selectTabState(global, tabId).middleSearch.byChatThreadKey[chatThreadKey];
+}
+
 export function selectCurrentSharedMediaSearch<T extends GlobalState>(
   global: T,
   ...[tabId = getCurrentTabId()]: TabArgs<T>

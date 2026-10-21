@@ -24,6 +24,7 @@ import useLang from '../../../hooks/useLang';
 import useLastCallback from '../../../hooks/useLastCallback';
 import useScrolledState from '../../../hooks/useScrolledState';
 import useShowTransition from '../../../hooks/useShowTransition';
+import { useIsLeftColumnCollapsed } from '../../../util/leftColumnCollapsed';
 
 import StoryRibbon from '../../story/StoryRibbon';
 import Transition from '../../ui/Transition';
@@ -213,11 +214,13 @@ const ChatFolders: FC<OwnProps & StateProps> = ({
     };
   }, [currentUserId, folderTabs, openChat, setActiveChatFolder]);
 
+  const isCollapsed = useIsLeftColumnCollapsed();
+
   const {
     ref: placeholderRef,
     shouldRender: shouldRenderPlaceholder,
   } = useShowTransition({
-    isOpen: !orderedFolderIds && !isFoldersSidebarShown,
+    isOpen: !orderedFolderIds && !isFoldersSidebarShown && !isCollapsed,
     noMountTransition: true,
     withShouldRender: true,
   });
@@ -246,18 +249,19 @@ const ChatFolders: FC<OwnProps & StateProps> = ({
   }
 
   const hasFolders = folderTabs && folderTabs.length > 1;
-  const shouldRenderFolders = hasFolders && !isFoldersSidebarShown;
+  const shouldRenderFolders = hasFolders && !isFoldersSidebarShown && !isCollapsed;
+  const canShowStoryRibbon = shouldRenderStoryRibbon && !isCollapsed;
 
   return (
     <div
       ref={ref}
       className={buildClassName(
         'ChatFolders',
-        shouldRenderStoryRibbon && 'with-story-ribbon',
+        canShowStoryRibbon && 'with-story-ribbon',
         isFoldersSidebarShown && 'ChatFolders--tabs-sidebar-shown',
       )}
     >
-      {shouldRenderStoryRibbon && <StoryRibbon isClosing={isStoryRibbonClosing} />}
+      {canShowStoryRibbon && <StoryRibbon isClosing={isStoryRibbonClosing} />}
       <div className={buildClassName(
         'ChatFolders-content',
         shouldRenderFolders && 'with-tabs',

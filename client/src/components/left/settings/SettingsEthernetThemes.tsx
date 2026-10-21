@@ -7,7 +7,15 @@ import { SettingsScreens } from '../../../types';
 import useHistoryBack from '../../../hooks/useHistoryBack';
 import useLang from '../../../hooks/useLang';
 import useLastCallback from '../../../hooks/useLastCallback';
-import { cssToMod, modToCss } from '../../../util/ethernetThemeUtils';
+import buildClassName from '../../../util/buildClassName';
+import {
+  buildUniversalThemeJson,
+  cssToMod,
+  modToCss,
+  parseUniversalTheme,
+  type UniversalThemePlugin,
+} from '../../../util/ethernetThemeUtils';
+import { formatVersion, isSvgIcon, sanitizeSvg } from '../../../util/svgIconUtils';
 import { getEthernetString } from '../../../util/ethernetLang';
 
 import Island from '../../gili/layout/Island';
@@ -28,7 +36,18 @@ type OwnProps = {
   onReset: () => void;
 };
 
-type ThemeInfo = { name: string; active: boolean };
+type ThemeInfo = {
+  name: string;
+  rawName?: string;
+  displayName?: string;
+  version?: string;
+  author?: string;
+  description?: string;
+  icon?: string;
+  pluginsCount?: number;
+  hasPlugins?: boolean;
+  active: boolean;
+};
 
 const SettingsEthernetThemes: FC<OwnProps> = ({ isActive, onReset }) => {
   const lang = useLang();
@@ -91,14 +110,43 @@ const SettingsEthernetThemes: FC<OwnProps> = ({ isActive, onReset }) => {
     const api = window.ethernetDesktop || window.hermesDesktop;
     const loader = window.ethernet || window.hermes;
     if (!api) return;
-    const picked = await api.pickFile('css');
+    const picked = await api.pickFile('theme');
     if (!picked) return;
-    const name = picked.name.replace(/\.css$/i, '') || 'Тема';
-    await api.themeSave(name, picked.content);
-    const parsedMod = cssToMod(picked.content);
-    await api.modSet(parsedMod);
-    await api.themeActivate(name);
-    if (loader?.applyTheme) await loader.applyTheme(name);
+    const defaultName = picked.name.replace(/\.(css|eth|eth-theme|json)$/i, '') || 'Тема';
+    const parsed = parseUniversalTheme(picked.content, defaultName);
+    const themeName = (parsed.name || defaultName).trim();
+
+    // 1. Разворачиваем зависимые плагины, если они запакованы в тему
+    if (parsed.plugins && parsed.plugins.length > 0 && api.pluginSave) {
+      for (const plugin of parsed.plugins) {
+        try {
+          await api.pluginSave({
+            id: plugin.id,
+            name: plugin.name,
+            version: plugin.version,
+            author: plugin.author,
+            description: plugin.description,
+            icon: plugin.icon,
+            code: plugin.code,
+            permissions: plugin.permissions,
+            themeDependency: themeName,
+            requiredForTheme: themeName,
+            enabled: true,
+          });
+        } catch (pluginErr) {
+          console.warn('[ethernet] Failed to unbundle plugin for theme:', plugin.name, pluginErr);
+        }
+      }
+      window.dispatchEvent(new CustomEvent('ethernet:plugins-updated'));
+    }
+
+    // 2. Сохраняем тему и активируем её
+    await api.themeSave(themeName, parsed.css, parsed.wallpaper);
+    if (parsed.mod) {
+      await api.modSet(parsed.mod);
+    }
+    await api.themeActivate(themeName);
+    if (loader?.applyTheme) await loader.applyTheme(themeName);
     await loadThemes();
   });
 
@@ -107,13 +155,56 @@ const SettingsEthernetThemes: FC<OwnProps> = ({ isActive, onReset }) => {
     if (!api) return;
     const currentMod = (await api.modGet()) || {};
     const activeTheme = themes?.find((t) => t.active);
-    const themeName = activeTheme ? activeTheme.name.replace(/\.css$/, '') : 'default';
+    const themeName = activeTheme
+      ? (activeTheme.displayName || activeTheme.rawName || activeTheme.name.replace(/\.(css|eth|eth-theme|json)$/, ''))
+      : 'default';
     const css = modToCss(currentMod, themeName);
+
+    // Собираем плагины, привязанные к теме
+    const allPlugins = api.pluginsList ? await api.pluginsList() : [];
+    const themePlugins = allPlugins?.filter((p) => p.themeDependency === themeName || p.requiredForTheme === themeName) || [];
+    const bundledPlugins: UniversalThemePlugin[] = [];
+    if (themePlugins.length > 0 && api.pluginRead) {
+      for (const tp of themePlugins) {
+        try {
+          const { code, manifest } = await api.pluginRead(tp.id);
+          const manifestObj = typeof manifest === 'string' ? JSON.parse(manifest) : (manifest || {});
+          bundledPlugins.push({
+            id: tp.id,
+            name: tp.name,
+            version: tp.version,
+            author: tp.author,
+            description: tp.description,
+            icon: tp.icon,
+            code,
+            permissions: manifestObj.permissions || tp.permissions,
+          });
+        } catch {}
+      }
+    }
+
+    const universalJson = buildUniversalThemeJson({
+      name: themeName,
+      version: activeTheme?.version || '1.0.0',
+      author: activeTheme?.author || 'User',
+      description: activeTheme?.description || '',
+      icon: activeTheme?.icon,
+      css,
+      mod: currentMod,
+      wallpaper: currentMod.wallpaperFile ? {
+        file: currentMod.wallpaperFile,
+        kind: currentMod.wallpaperKind || 'image',
+        slug: currentMod.wallpaperFile.replace(/\.[^.]+$/, ''),
+        originalPath: currentMod.wallpaperOriginalPath,
+      } : undefined,
+      plugins: bundledPlugins,
+    });
+
     await api.saveFile({
-      defaultName: `${themeName}.css`,
-      content: css,
-      ext: 'css',
-      filterName: 'CSS Theme',
+      defaultName: `${themeName}.eth`,
+      content: universalJson,
+      ext: 'eth',
+      filterName: 'Ethernet Package (*.eth, *.json)',
     });
   });
 
@@ -136,7 +227,8 @@ const SettingsEthernetThemes: FC<OwnProps> = ({ isActive, onReset }) => {
     if (!api) return;
     const name = (nameToSave || '').trim().replace(/[^\w\u0400-\u04FF-]+/g, '-').replace(/^-+|-+$/g, '') || 'Тема';
     await api.themeSave(name, cssToSave);
-    const parsedMod = cssToMod(cssToSave);
+    const parsed = parseUniversalTheme(cssToSave, name);
+    const parsedMod = parsed.mod || cssToMod(parsed.css || cssToSave);
     await api.modSet(parsedMod);
     await api.themeActivate(name);
     if (loader?.applyTheme) await loader.applyTheme(name);
@@ -148,17 +240,11 @@ const SettingsEthernetThemes: FC<OwnProps> = ({ isActive, onReset }) => {
     const api = window.ethernetDesktop || window.hermesDesktop;
     const loader = window.ethernet || window.hermes;
     if (!api) return;
-    const rawName = theme.name.replace(/\.css$/, '');
+    const rawName = theme.rawName || theme.name.replace(/\.(css|eth|json|eth-theme)$/i, '');
     // Optimistic UI update: instantly move checkmark to selected theme
     setThemes((prev) => prev?.map((t) => ({ ...t, active: t.name === theme.name })));
     try {
       await api.themeActivate(rawName);
-      const css = await api.themeRead(theme.name);
-      if (css) {
-        const parsedMod = cssToMod(css);
-        await api.modSet(parsedMod);
-        if (loader?.applyMod) loader.applyMod(parsedMod);
-      }
       if (loader?.applyTheme) await loader.applyTheme(rawName);
     } catch (err) {
       console.error('[ethernet] activate error', err);
@@ -283,7 +369,12 @@ const SettingsEthernetThemes: FC<OwnProps> = ({ isActive, onReset }) => {
               {/* Стандартная тема */}
               <ListItem
                 key="__default__"
-                icon={isDefaultActive ? 'check' : undefined}
+                leftElement={(
+                  <div className={buildClassName('ListItem-main-icon', styles.defaultThemeIcon)}>
+                    <Icon name="brush" className={styles.defaultIconGraphic} />
+                  </div>
+                )}
+                rightElement={isDefaultActive ? <Icon name="check" className={styles.activeCheckIcon} /> : undefined}
                 multiline
                 narrow
                 onClick={handleActivateDefault}
@@ -294,11 +385,27 @@ const SettingsEthernetThemes: FC<OwnProps> = ({ isActive, onReset }) => {
 
               {/* Пользовательские и импортированные темы */}
               {themes.map((theme) => {
-                const displayName = theme.name.replace(/\.css$/, '');
+                const displayName = theme.displayName || theme.rawName || theme.name.replace(/\.(css|eth|eth-theme|json)$/, '');
+                const formattedVer = formatVersion(theme.version);
+                const hasCustomIcon = Boolean(theme.icon && isSvgIcon(theme.icon));
+                const cleanSvg = hasCustomIcon ? sanitizeSvg(theme.icon!) : undefined;
+
                 return (
                   <ListItem
                     key={theme.name}
-                    icon={theme.active ? 'check' : undefined}
+                    leftElement={
+                      cleanSvg ? (
+                        <div
+                          className={buildClassName('ListItem-main-icon', styles.customSvgIcon)}
+                          dangerouslySetInnerHTML={{ __html: cleanSvg }}
+                        />
+                      ) : (
+                        <div className={buildClassName('ListItem-main-icon', styles.defaultThemeIcon)}>
+                          <Icon name="brush" className={styles.defaultIconGraphic} />
+                        </div>
+                      )
+                    }
+                    rightElement={theme.active ? <Icon name="check" className={styles.activeCheckIcon} /> : undefined}
                     multiline
                     narrow
                     withPortalForMenu
@@ -311,6 +418,52 @@ const SettingsEthernetThemes: FC<OwnProps> = ({ isActive, onReset }) => {
                         openThemeEditor();
                       },
                     }, {
+                      title: 'Экспорт универсального пакета (.eth)',
+                      icon: 'download',
+                      handler: async () => {
+                        const api = window.ethernetDesktop || window.hermesDesktop;
+                        if (!api) return;
+                        const raw = await api.themeRead(theme.name);
+                        const parsed = parseUniversalTheme(raw, displayName);
+                        const allPlugins = api.pluginsList ? await api.pluginsList() : [];
+                        const themePlugins = allPlugins?.filter((p) => p.themeDependency === displayName || p.requiredForTheme === displayName) || [];
+                        const bundledPlugins: UniversalThemePlugin[] = [];
+                        if (themePlugins.length > 0 && api.pluginRead) {
+                          for (const tp of themePlugins) {
+                            try {
+                              const { code, manifest } = await api.pluginRead(tp.id);
+                              const manifestObj = typeof manifest === 'string' ? JSON.parse(manifest) : (manifest || {});
+                              bundledPlugins.push({
+                                id: tp.id,
+                                name: tp.name,
+                                version: tp.version,
+                                author: tp.author,
+                                description: tp.description,
+                                icon: tp.icon,
+                                code,
+                                permissions: manifestObj.permissions || tp.permissions,
+                              });
+                            } catch {}
+                          }
+                        }
+                        const universalJson = buildUniversalThemeJson({
+                          name: displayName,
+                          version: theme.version || parsed.version || '1.0.0',
+                          author: theme.author || parsed.author || 'User',
+                          description: theme.description || parsed.description || '',
+                          icon: theme.icon || parsed.icon,
+                          css: parsed.css,
+                          mod: parsed.mod,
+                          plugins: bundledPlugins.length > 0 ? bundledPlugins : parsed.plugins,
+                        });
+                        await api.saveFile({
+                          defaultName: `${displayName}.eth`,
+                          content: universalJson,
+                          ext: 'eth',
+                          filterName: 'Ethernet Package (*.eth, *.json)',
+                        });
+                      },
+                    }, {
                       title: getEthernetString(lang, 'EthernetExportCss'),
                       icon: 'download',
                       handler: async () => {
@@ -318,7 +471,7 @@ const SettingsEthernetThemes: FC<OwnProps> = ({ isActive, onReset }) => {
                         if (!api) return;
                         const css = await api.themeRead(theme.name);
                         await api.saveFile({
-                          defaultName: theme.name,
+                          defaultName: `${displayName}.css`,
                           content: css,
                           ext: 'css',
                         });
@@ -334,9 +487,25 @@ const SettingsEthernetThemes: FC<OwnProps> = ({ isActive, onReset }) => {
                       handler: () => setDeletingName(theme.name),
                     }]}
                   >
-                    <span className="title">{displayName}</span>
+                    <div className={styles.themeTitleRow}>
+                      <span className="title">{displayName}</span>
+                      {Boolean(theme.pluginsCount && theme.pluginsCount > 0) && (
+                        <span className={styles.pluginsBadge} title={`Тема включает ${theme.pluginsCount} плагин(ов)`}>
+                          <Icon name="link" className={styles.pluginsBadgeIcon} />
+                          <span>{theme.pluginsCount}</span>
+                        </span>
+                      )}
+                    </div>
                     <span className="subtitle">
-                      {theme.active ? `${getEthernetString(lang, 'EthernetThemeActive')}` : ''}
+                      {theme.description ? `${theme.description} · ` : ''}
+                      {theme.author ? `от ${theme.author}` : ''}
+                      {formattedVer ? (theme.author ? ` · ${formattedVer}` : formattedVer) : ''}
+                      {theme.active && (
+                        <span className={styles.activeText}>
+                          {(theme.description || theme.author || formattedVer) ? ' · ' : ''}
+                          {getEthernetString(lang, 'EthernetThemeActive')}
+                        </span>
+                      )}
                     </span>
                   </ListItem>
                 );

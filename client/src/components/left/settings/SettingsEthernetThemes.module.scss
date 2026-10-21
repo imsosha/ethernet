@@ -110,6 +110,78 @@
   box-sizing: border-box;
 }
 
+.themeTitleRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  max-width: 100%;
+}
+
+.pluginsBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  padding: 0.125rem 0.375rem;
+  border-radius: 999px;
+  background: rgba(var(--color-primary-rgb, 80, 162, 234), 0.12);
+  color: var(--color-primary);
+  margin-left: 0.25rem;
+  vertical-align: middle;
+  user-select: none;
+
+  .pluginsBadgeIcon {
+    font-size: 0.8125rem;
+    flex-shrink: 0;
+  }
+}
+
+.customSvgIcon {
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--border-radius-default-small, 8px);
+  overflow: hidden;
+  flex-shrink: 0;
+
+  svg {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+}
+
+.defaultThemeIcon {
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--border-radius-default-small, 8px);
+  background: var(--color-chat-hover, rgba(0, 0, 0, 0.05));
+  color: var(--color-primary);
+  flex-shrink: 0;
+
+  .defaultIconGraphic {
+    font-size: 1.25rem;
+  }
+}
+
+.activeCheckIcon {
+  color: var(--color-primary);
+  font-size: 1.25rem;
+  margin-left: 0.5rem;
+  flex-shrink: 0;
+}
+
+.activeText {
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
 .editor {
   display: flex;
   flex-direction: column;

@@ -19,6 +19,7 @@ import { selectSharedSettings } from '../../global/selectors/sharedState.ts';
 import captureEscKeyListener from '../../util/captureEscKeyListener';
 import { resolveTransitionName } from '../../util/resolveTransitionName.ts';
 import buildClassName from '../../util/buildClassName';
+import { setIsSidebarPinned } from '../../util/sidebarPinned';
 
 import useCurrentOrPrev from '../../hooks/useCurrentOrPrev';
 import useFlag from '../../hooks/useFlag';
@@ -158,10 +159,15 @@ const RightColumn: FC<OwnProps & StateProps> = ({
 
   useLayoutEffect(() => {
     wasOpenRef.current = isOpen;
+    if (isOpen) {
+      setIsSidebarPinned(true);
+    } else {
+      setIsSidebarPinned(false);
+    }
   }, [isOpen]);
 
   useLayoutEffect(() => {
-    if (!isProfile) return undefined;
+    if (!isProfile && !isManagement) return undefined;
     const rightColumn = document.getElementById('RightColumn');
     if (!rightColumn) return undefined;
 
@@ -186,7 +192,7 @@ const RightColumn: FC<OwnProps & StateProps> = ({
       rightColumn.style.removeProperty('height');
       rightColumn.style.removeProperty('max-height');
     };
-  }, [isProfile]);
+  }, [isProfile, isManagement]);
 
   useLayoutEffect(() => {
     const elements = containerRef.current?.querySelectorAll<HTMLElement>(
@@ -220,6 +226,7 @@ const RightColumn: FC<OwnProps & StateProps> = ({
           setProfileState(ProfileState.Profile);
           break;
         }
+        setIsSidebarPinned(false);
         toggleChatInfo({ force: false }, { forceSyncOnIOs: true });
         break;
       case RightColumnContent.Management: {
@@ -421,7 +428,7 @@ const RightColumn: FC<OwnProps & StateProps> = ({
       {isOverlaying && (
         <div className="overlay-backdrop" onClick={close} />
       )}
-      <div id="RightColumn" className={buildClassName(isProfile && 'is-profile-view')}>
+      <div id="RightColumn" className={buildClassName((isProfile || isManagement) && 'is-profile-view')}>
         <RightHeader
           chatId={chatId}
           threadId={threadId}

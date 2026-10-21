@@ -38,6 +38,8 @@ import { ARE_CALLS_SUPPORTED, IS_APP } from '../../util/browser/windowEnvironmen
 import { formatCountdown } from '../../util/dates/oldDateFormat';
 import { isUserId } from '../../util/entities/ids';
 import focusNoScroll from '../../util/focusNoScroll';
+import buildClassName from '../../util/buildClassName';
+import { setIsSidebarPinned, useIsSidebarPinned } from '../../util/sidebarPinned';
 
 import { useHotkeys } from '../../hooks/useHotkeys';
 import useLang from '../../hooks/useLang';
@@ -139,6 +141,8 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
     setViewForumAsMessages,
     openFrozenAccountModal,
     openCocoonModal,
+    openThreadWithInfo,
+    toggleChatInfo,
   } = getActions();
   const menuButtonRef = useRef<HTMLButtonElement>();
   const oldLang = useOldLang();
@@ -223,6 +227,19 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
 
     e.preventDefault();
     handleSearchClick();
+  });
+
+  const isSidebarPinned = useIsSidebarPinned();
+  const isSidebarActive = Boolean(isRightColumnShown);
+
+  const handleToggleSidebar = useLastCallback(() => {
+    if (isRightColumnShown) {
+      setIsSidebarPinned(false);
+      toggleChatInfo({ force: false });
+    } else {
+      setIsSidebarPinned(true);
+      openThreadWithInfo({ chatId, threadId, isOwnProfile: false });
+    }
   });
 
   const getTextWithLanguage = useCallback((langKey: string, langCode: string) => {
@@ -414,6 +431,18 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
         >
           <div className="badge">{pendingJoinRequests}</div>
         </Button>
+      )}
+      {!isMobile && (
+        <Button
+          round
+          ripple
+          size="smaller"
+          color="translucent"
+          className={buildClassName(isSidebarActive && 'active')}
+          onClick={handleToggleSidebar}
+          ariaLabel="Toggle sidebar"
+          iconName="sidebar"
+        />
       )}
       <Button
         ref={menuButtonRef}

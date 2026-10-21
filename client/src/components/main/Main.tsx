@@ -572,26 +572,9 @@ const Main = ({
     updateIcon(false);
   });
 
-  const playerReserveRef = useRef(0);
-  const handlePlayerPaneStateChange = useLastCallback(({ height }: PaneState) => {
-    const main = containerRef.current;
-    const middleColumn = document.getElementById('MiddleColumn');
-    if (!main || !middleColumn) return;
-    const occupiedHeight = height ? height + PANE_GAP_REM * REM : 0;
-    const heightDelta = occupiedHeight - playerReserveRef.current;
-    if (!heightDelta) return;
-    playerReserveRef.current = occupiedHeight;
-    const parkedShift = occupiedHeight ? '0px' : 'var(--middle-panel-inline-padding)';
-    updateTopReserveWithScrollCompensation(middleColumn, heightDelta, () => {
-      setExtraStyles(main, {
-        '--middle-header-player-height': `${occupiedHeight}px`,
-        '--middle-header-player-parked': parkedShift,
-      });
-      setExtraStyles(middleColumn, {
-        '--middle-header-player-height': `${occupiedHeight}px`,
-        '--middle-header-player-parked': parkedShift,
-      });
-    }, [main]);
+  const handlePlayerPaneStateChange = useLastCallback(() => {
+    // Player pane height and shift are handled synchronously via CSS classes
+    // and variables on #MiddleColumn.has-audio-player.
   });
 
   const handleStickerSetModalClose = useLastCallback(() => {

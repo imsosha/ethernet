@@ -551,6 +551,7 @@
 
     @include mixins.composer-action-button-pill;
 
+    background-color: var(--color-send-button, var(--color-primary)) !important;
     z-index: 2;
     overflow: hidden;
     margin-left: var(--composer-row-gap);

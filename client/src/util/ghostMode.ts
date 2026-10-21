@@ -17,6 +17,7 @@ export type GhostSettings = {
   disableAllNotifications: boolean;
   disableCloseToTray: boolean;
   disableNftGifts: boolean;
+  useNativeNotifications: boolean;
 };
 
 export const DEFAULT_GHOST_SETTINGS: GhostSettings = {
@@ -36,6 +37,7 @@ export const DEFAULT_GHOST_SETTINGS: GhostSettings = {
   disableAllNotifications: false,
   disableCloseToTray: false,
   disableNftGifts: false,
+  useNativeNotifications: false,
 };
 
 export type GhostStorage = {
@@ -145,6 +147,23 @@ if (typeof window !== 'undefined') {
       }
     }).catch(() => {});
   }
+
+  if (window.ethernetDesktop?.nativeNotificationsGet) {
+    window.ethernetDesktop.nativeNotificationsGet().then((enabled: boolean) => {
+      if (typeof enabled === 'boolean') {
+        const storage = getGhostStorage();
+        if (storage.global.useNativeNotifications !== enabled) {
+          saveGhostStorage({
+            ...storage,
+            global: {
+              ...storage.global,
+              useNativeNotifications: enabled,
+            },
+          }, false);
+        }
+      }
+    }).catch(() => {});
+  }
 }
 
 const listeners = new Set<(storage: GhostStorage) => void>();
@@ -169,6 +188,9 @@ export function saveGhostStorage(storage: GhostStorage, syncToDesktop = true) {
     }
     if (syncToDesktop && window.ethernetDesktop?.closeToTrayDisabledSet) {
       window.ethernetDesktop.closeToTrayDisabledSet(Boolean(storage.global.disableCloseToTray));
+    }
+    if (syncToDesktop && window.ethernetDesktop?.nativeNotificationsSet) {
+      window.ethernetDesktop.nativeNotificationsSet(Boolean(storage.global.useNativeNotifications));
     }
   }
   listeners.forEach((l) => {
@@ -202,6 +224,7 @@ export function getEffectiveGhostSettings(userId?: string): GhostSettings {
     disableAllNotifications: base.disableAllNotifications !== undefined ? Boolean(base.disableAllNotifications) : DEFAULT_GHOST_SETTINGS.disableAllNotifications,
     disableCloseToTray: base.disableCloseToTray !== undefined ? Boolean(base.disableCloseToTray) : DEFAULT_GHOST_SETTINGS.disableCloseToTray,
     disableNftGifts: base.disableNftGifts !== undefined ? Boolean(base.disableNftGifts) : DEFAULT_GHOST_SETTINGS.disableNftGifts,
+    useNativeNotifications: base.useNativeNotifications !== undefined ? Boolean(base.useNativeNotifications) : DEFAULT_GHOST_SETTINGS.useNativeNotifications,
   };
 }
 
@@ -226,6 +249,15 @@ export function isAllNotificationsDisabled(userId?: string): boolean {
 export function isCloseToTrayDisabled(): boolean {
   const storage = (typeof window !== 'undefined' && (window as any).__ethernetGhostStorage) || currentStorage;
   return Boolean(storage.global?.disableCloseToTray);
+}
+
+export function shouldUseNativeNotifications(userId?: string): boolean {
+  const storage = (typeof window !== 'undefined' && (window as any).__ethernetGhostStorage) || currentStorage;
+  const settings = (userId && storage.accounts?.[userId])
+    ? { ...DEFAULT_GHOST_SETTINGS, ...storage.accounts[userId] }
+    : { ...DEFAULT_GHOST_SETTINGS, ...(storage.global || {}) };
+
+  return Boolean(settings.useNativeNotifications);
 }
 
 export function isGhostActionBlocked(

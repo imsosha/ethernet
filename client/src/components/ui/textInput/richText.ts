@@ -301,10 +301,7 @@ function buildTiptapNodesFromBlock(
     case 'unsupported':
       return options?.isForCopy ? [] : [{ type: UNSUPPORTED_NODE_NAME }];
     default:
-      // TODO: Add Tiptap media nodes for lossless message copy and editor paste
-      return options?.isForCopy
-        ? buildTiptapMediaFallbackNodes(block, options)
-        : [{ type: UNSUPPORTED_NODE_NAME }];
+      return buildTiptapMediaFallbackNodes(block, options);
   }
 }
 
@@ -320,9 +317,14 @@ function buildTiptapMediaFallbackNodes(
     case 'photo':
     case 'video':
     case 'audio':
+    case 'document':
     case 'embed':
     case 'map':
       return buildTiptapCaptionNodes(block.caption);
+    case 'buttonRow':
+      return [
+        ...block.buttons.flatMap((btn) => (hasRichText(btn.text) ? buildTiptapParagraphNodes(btn.text) : [])),
+      ];
     case 'cover':
       return buildTiptapNodesFromBlock(block.cover, options);
     case 'embedPost':
@@ -757,6 +759,7 @@ function getNestedSupportedRichText(text: ApiRichText): ApiRichText {
     case 'autoEmail':
     case 'autoPhone':
     case 'bankCard':
+    case 'diff':
       return text.text;
     default:
       return EMPTY_RICH_TEXT;
@@ -1256,25 +1259,17 @@ function hasUnsupportedRichBlock(block: ApiPageBlock): boolean {
       return block.items.some((item) => item.type === 'blocks' && item.blocks.some(hasUnsupportedRichBlock));
     case 'orderedList':
       return block.items.some((item) => item.type === 'blocks' && item.blocks.some(hasUnsupportedRichBlock));
-    case 'header':
-    case 'subheader':
-    case 'paragraph':
-    case 'footer':
-    case 'preformatted':
-    case 'divider':
-    case 'blockquote':
-    case 'pullquote':
-    case 'table':
-    case 'heading1':
-    case 'heading2':
-    case 'heading3':
-    case 'heading4':
-    case 'heading5':
-    case 'heading6':
-    case 'math':
-      return false;
-    default:
+    case 'cover':
+      return hasUnsupportedRichBlock(block.cover);
+    case 'collage':
+    case 'slideshow':
+      return block.items.some(hasUnsupportedRichBlock);
+    case 'embedPost':
+      return block.blocks.some(hasUnsupportedRichBlock);
+    case 'unsupported':
       return true;
+    default:
+      return false;
   }
 }
 
@@ -1355,9 +1350,56 @@ function getBlockAsFormatted(block: ApiPageBlock, isApproximate: boolean): ApiFo
         length: block.source.length,
         language: LATEX_CODE_LANGUAGE,
       }) : undefined;
+    case 'title':
+    case 'subtitle':
+    case 'kicker':
+      return isApproximate
+        ? getNestedRichTextAsFormatted(block.text, ApiMessageEntityTypes.Bold, true)
+        : undefined;
+    case 'thinking':
+      return isApproximate
+        ? getNestedRichTextAsFormatted(block.text, ApiMessageEntityTypes.Italic, true)
+        : undefined;
+    case 'authorDate': {
+      if (!isApproximate) return undefined;
+      const text = buildAuthorDateRichText(block);
+      return getRichTextAsFormatted(text, true);
+    }
+    case 'photo':
+    case 'video':
+    case 'audio':
+    case 'embed':
+    case 'map':
+      return isApproximate ? getCaptionAsFormatted(block.caption) : undefined;
+    case 'cover':
+      return isApproximate ? getBlockAsFormatted(block.cover, true) : undefined;
+    case 'embedPost':
+      return isApproximate ? getBlocksAsFormatted(block.blocks, true) : undefined;
+    case 'collage':
+    case 'slideshow':
+      return isApproximate ? getBlocksAsFormatted(block.items, true) : undefined;
+    case 'channel':
+      return isApproximate && block.title ? { text: block.title } : undefined;
+    case 'relatedArticles': {
+      if (!isApproximate) return undefined;
+      const title = hasRichText(block.title) ? getRichTextPlainText(block.title) : undefined;
+      const text = [title, ...block.articles.map((a) => a.title || a.url)].filter(Boolean).join('\n');
+      return text ? { text } : undefined;
+    }
+    case 'anchor':
+      return isApproximate ? { text: '' } : undefined;
     default:
       return undefined;
   }
+}
+
+function getCaptionAsFormatted(caption: ApiPageCaption): ApiFormattedText | undefined {
+  const text = hasRichText(caption.text) ? getRichTextAsFormatted(caption.text, true) : undefined;
+  const credit = hasRichText(caption.credit) ? getRichTextAsFormatted(caption.credit, true) : undefined;
+  if (text && credit) {
+    return appendFormattedText(text, credit, true);
+  }
+  return text || credit || { text: '' };
 }
 
 function getBlockquoteAsFormatted(

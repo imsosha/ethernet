@@ -28,7 +28,7 @@ type OwnProps = {
 export type ProxyConfig = {
   id: string;
   name: string;
-  protocol: 'socks5' | 'http';
+  protocol: 'socks5' | 'http' | 'https';
   server: string;
   port: number;
   auth?: {
@@ -73,7 +73,7 @@ const SettingsEthernetNetwork: FC<OwnProps> = ({ isActive, onReset }) => {
   // Form Fields
   const [linkInput, setLinkInput] = useState('');
   const [formName, setFormName] = useState('');
-  const [formProtocol, setFormProtocol] = useState<'socks5' | 'http'>('socks5');
+  const [formProtocol, setFormProtocol] = useState<'socks5' | 'http' | 'https'>('socks5');
   const [formServer, setFormServer] = useState('');
   const [formPort, setFormPort] = useState(1080);
   const [formUsername, setFormUsername] = useState('');
@@ -106,26 +106,32 @@ const SettingsEthernetNetwork: FC<OwnProps> = ({ isActive, onReset }) => {
   const handleToggleProxyMaster = useCallback(async (newVal?: boolean) => {
     if (!ethernet?.proxyToggle) return;
     const targetVal = typeof newVal === 'boolean' ? newVal : !proxyState.enabled;
-    const newState = await ethernet.proxyToggle(targetVal);
+    const newState: any = await ethernet.proxyToggle(targetVal);
     if (newState) {
       setProxyState({
         enabled: Boolean(newState.enabled),
         activeProxyId: newState.activeProxyId || null,
         proxies: Array.isArray(newState.proxies) ? newState.proxies : [],
       });
+      if (newState.applyError) {
+        alert(`Ошибка применения прокси: ${newState.applyError}`);
+      }
       window.dispatchEvent(new CustomEvent('ethernet-network-changed'));
     }
   }, [ethernet, proxyState.enabled]);
 
   const handleSetActiveProxy = async (id: string) => {
     if (!ethernet?.proxySetActive) return;
-    const newState = await ethernet.proxySetActive(id);
+    const newState: any = await ethernet.proxySetActive(id);
     if (newState) {
       setProxyState({
         enabled: Boolean(newState.enabled),
         activeProxyId: newState.activeProxyId || null,
         proxies: Array.isArray(newState.proxies) ? newState.proxies : [],
       });
+      if (newState.applyError) {
+        alert(`Ошибка применения прокси: ${newState.applyError}`);
+      }
       window.dispatchEvent(new CustomEvent('ethernet-network-changed'));
     }
   };
@@ -177,19 +183,21 @@ const SettingsEthernetNetwork: FC<OwnProps> = ({ isActive, onReset }) => {
     setModalTab('manual');
     setLinkInput(proxy.rawLink || '');
     setFormName(proxy.name || '');
-    setFormProtocol(proxy.protocol === 'http' ? 'http' : 'socks5');
+    setFormProtocol(proxy.protocol === 'https' ? 'https' : (proxy.protocol === 'http' ? 'http' : 'socks5'));
     setFormServer(proxy.server || '');
-    setFormPort(proxy.port || (proxy.protocol === 'http' ? 8080 : 1080));
+    setFormPort(proxy.port || (proxy.protocol === 'https' ? 443 : (proxy.protocol === 'http' ? 8080 : 1080)));
     setFormUsername(proxy.auth?.username || '');
     setFormPassword(proxy.auth?.password || '');
     setIsModalOpen(true);
   };
 
-  const handleProtocolChange = (protocol: 'socks5' | 'http') => {
+  const handleProtocolChange = (protocol: 'socks5' | 'http' | 'https') => {
     setFormProtocol(protocol);
-    if (protocol === 'http' && formPort === 1080) {
+    if (protocol === 'https' && (formPort === 1080 || formPort === 8080)) {
+      setFormPort(443);
+    } else if (protocol === 'http' && (formPort === 1080 || formPort === 443)) {
       setFormPort(8080);
-    } else if (protocol === 'socks5' && formPort === 8080) {
+    } else if (protocol === 'socks5' && (formPort === 8080 || formPort === 443)) {
       setFormPort(1080);
     }
   };
@@ -209,7 +217,7 @@ const SettingsEthernetNetwork: FC<OwnProps> = ({ isActive, onReset }) => {
             id: editingProxyId || parsed.id || Date.now().toString(36),
           };
         } else {
-          alert('Неверный формат ссылки прокси. Поддерживаются ссылки socks5://, http://, tg://socks?...');
+          alert(getEthernetString(lang, 'ProxyInvalidLink'));
           return;
         }
       }
@@ -220,7 +228,7 @@ const SettingsEthernetNetwork: FC<OwnProps> = ({ isActive, onReset }) => {
         name: formName.trim() || `${formProtocol.toUpperCase()} ${formServer.trim()}:${formPort}`,
         protocol: formProtocol,
         server: formServer.trim(),
-        port: Number(formPort) || (formProtocol === 'http' ? 8080 : 1080),
+        port: Number(formPort) || (formProtocol === 'https' ? 443 : (formProtocol === 'http' ? 8080 : 1080)),
         auth: (formUsername.trim() || formPassword.trim()) ? {
           username: formUsername.trim() || undefined,
           password: formPassword.trim() || undefined,
@@ -229,13 +237,16 @@ const SettingsEthernetNetwork: FC<OwnProps> = ({ isActive, onReset }) => {
     }
 
     if (configToSave) {
-      const newState = await ethernet.proxySave(configToSave);
+      const newState: any = await ethernet.proxySave(configToSave);
       if (newState) {
         setProxyState({
           enabled: Boolean(newState.enabled),
           activeProxyId: newState.activeProxyId || null,
           proxies: Array.isArray(newState.proxies) ? newState.proxies : [],
         });
+        if (newState.applyError) {
+          alert(`Ошибка применения прокси: ${newState.applyError}`);
+        }
         window.dispatchEvent(new CustomEvent('ethernet-network-changed'));
       }
       setIsModalOpen(false);
@@ -404,10 +415,11 @@ const SettingsEthernetNetwork: FC<OwnProps> = ({ isActive, onReset }) => {
                 <select
                   className={styles.formSelect}
                   value={formProtocol}
-                  onChange={(e) => handleProtocolChange(e.target.value as 'socks5' | 'http')}
+                  onChange={(e) => handleProtocolChange(e.target.value as 'socks5' | 'http' | 'https')}
                 >
                   <option value="socks5">SOCKS5</option>
                   <option value="http">HTTP</option>
+                  <option value="https">HTTPS</option>
                 </select>
               </div>
 

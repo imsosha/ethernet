@@ -181,7 +181,11 @@ function countRichTextCustomEmojis(text: ApiRichText): number {
     case 'bankCard':
     case 'mentionName':
     case 'date':
+    case 'button':
+    case 'tonAddress':
       return countRichTextCustomEmojis(text.text);
+    case 'diff':
+      return countRichTextCustomEmojis(text.text) + countRichTextCustomEmojis(text.oldText);
     default:
       return 0;
   }
@@ -241,8 +245,11 @@ function sumPageBlockMatchingRichText(block: ApiPageBlock, predicate: (text: Api
     case 'video':
     case 'map':
     case 'audio':
+    case 'document':
     case 'embed':
       return sumPageCaptionMatchingRichText(block.caption, predicate);
+    case 'buttonRow':
+      return block.buttons.reduce((total, btn) => total + predicate(btn.text), 0);
     case 'cover':
       return sumPageBlockMatchingRichText(block.cover, predicate);
     case 'embedPost':
@@ -304,8 +311,11 @@ function hasPageBlockMatchingRichText(block: ApiPageBlock, predicate: (text: Api
     case 'video':
     case 'map':
     case 'audio':
+    case 'document':
     case 'embed':
       return hasPageCaptionMatchingRichText(block.caption, predicate);
+    case 'buttonRow':
+      return block.buttons.some((btn) => predicate(btn.text));
     case 'cover':
       return hasPageBlockMatchingRichText(block.cover, predicate);
     case 'embedPost':
@@ -384,7 +394,11 @@ function hasRichTextSpoileredCustomEmojis(text: ApiRichText): boolean {
     case 'bankCard':
     case 'mentionName':
     case 'date':
+    case 'button':
+    case 'tonAddress':
       return hasRichTextSpoileredCustomEmojis(text.text);
+    case 'diff':
+      return hasRichTextSpoileredCustomEmojis(text.text) || hasRichTextSpoileredCustomEmojis(text.oldText);
     default:
       return false;
   }

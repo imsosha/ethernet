@@ -1,6 +1,16 @@
 #MiddleColumn {
   position: relative;
   z-index: 1;
+  contain: layout paint;
+
+  --middle-header-player-height: 0px;
+  --middle-header-player-shift-y: 0px;
+
+  &.has-audio-player,
+  :root[data-audio-player-open="true"] & {
+    --middle-header-player-height: calc(var(--middle-header-height) + var(--middle-header-gap));
+    --middle-header-player-shift-y: calc(var(--middle-header-height) + var(--middle-header-gap));
+  }
 
   display: flex;
   justify-content: center;
@@ -20,6 +30,7 @@
     --slide-transition: var(--top-stack-transition);
 
     position: relative;
+    contain: layout paint;
 
     overflow: hidden;
     display: flex;
@@ -232,13 +243,7 @@
       }
     }
 
-    @media (min-width: 1276px) {
-      width: auto;
 
-      #Main.right-column-open & {
-        transform: none;
-      }
-    }
 
     @media (max-width: 600px) {
       --footer-side-inset: 0.5rem;
@@ -289,26 +294,10 @@
   cursor: ew-resize;
 
   position: absolute;
-  z-index: var(--z-resize-handle);
+  z-index: 100;
   top: 0;
   bottom: 0;
-  left: -0.25rem;
+  left: -0.625rem;
 
-  width: 0.5rem;
-}
-
-@keyframes hermesChatFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-#MiddleColumn .MessageList {
-  animation: hermesChatFadeIn 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+  width: 1.25rem;
 }

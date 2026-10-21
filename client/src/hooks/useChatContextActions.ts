@@ -243,7 +243,7 @@ const useChatContextActions = ({
       actionMarkAsUnread,
       canManageListPlacement && actionPin,
       !isSelf && actionMute,
-      !isSelf && !isServiceNotifications && !isInFolder && canManageListPlacement && actionArchive,
+      !isSelf && !isServiceNotifications && canManageListPlacement && actionArchive,
       actionReport,
       actionDelete,
     ]);

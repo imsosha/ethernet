@@ -60,24 +60,30 @@ async function applyProxyToSession(proxy) {
   }
 
   if (!proxy || !proxy.server || !proxy.port) {
+    const wasProxyActive = Boolean(currentActiveProxy);
     currentActiveProxy = null;
     proxyAuthCredentials = null;
     for (const sess of sessions) {
       try {
         await sess.setProxy({ mode: 'system' });
-        if (typeof sess.closeAllConnections === 'function') {
-          await sess.closeAllConnections();
+        if (wasProxyActive) {
+          if (typeof sess.closeAllConnections === 'function') {
+            await sess.closeAllConnections();
+          }
+          if (typeof sess.clearAuthCache === 'function') {
+            await sess.clearAuthCache();
+          }
+          if (typeof sess.clearHostResolverCache === 'function') {
+            await sess.clearHostResolverCache();
+          }
         }
-        if (typeof sess.clearAuthCache === 'function') {
-          await sess.clearAuthCache();
-        }
-        if (typeof sess.clearHostResolverCache === 'function') {
-          await sess.clearHostResolverCache();
-        }
-      } catch (e) { plog('clearProxy err', e.message); }
+      } catch (e) {
+        plog('clearProxy err', e.message);
+        return { success: false, error: e.message };
+      }
     }
-    plog('[ProxyEngine] In-app proxy disabled, system routing active across all sessions');
-    return;
+    plog('[ProxyEngine] In-app proxy disabled, system OS routing (TUN/System Proxy compatible) active across all sessions');
+    return { success: true };
   }
 
   const { protocol = 'socks5', server, port, auth } = proxy;
@@ -87,13 +93,16 @@ async function applyProxyToSession(proxy) {
   let proxyRules = '';
   if (protocol === 'http') {
     proxyRules = `http=http://${server}:${port};https=http://${server}:${port}`;
+  } else if (protocol === 'https') {
+    proxyRules = `https=${server}:${port};http=https://${server}:${port}`;
   } else {
-    // socks5 — Electron/Chromium uses this for all traffic including WebSocket upgrades
-    proxyRules = `socks5://${server}:${port}`;
+    // socks5 / socks4 — Electron/Chromium uses this for all traffic including WebSocket upgrades
+    proxyRules = `${protocol}://${server}:${port}`;
   }
 
   plog(`[ProxyEngine] Applying proxy (${protocol}): ${proxyRules}`);
 
+  let lastError = null;
   for (const sess of sessions) {
     try {
       await sess.setProxy({ proxyRules });
@@ -108,9 +117,15 @@ async function applyProxyToSession(proxy) {
       }
       plog('[ProxyEngine] Proxy successfully applied to session');
     } catch (err) {
-      plog('[ProxyEngine] Failed to apply proxy to session:', err.message);
+      lastError = err.message || String(err);
+      plog('[ProxyEngine] Failed to apply proxy to session:', lastError);
     }
   }
+
+  if (lastError) {
+    return { success: false, error: lastError };
+  }
+  return { success: true };
 }
 
 /**
@@ -118,22 +133,23 @@ async function applyProxyToSession(proxy) {
  */
 async function applyNetworkState() {
   const customProxySettings = hermesSettings.getProxySettings();
-  let result = { mode: 'direct' };
+  let result = { mode: 'direct', success: true };
 
   // 1. Если включен пользовательский прокси и выбран активный
   if (customProxySettings.enabled && customProxySettings.activeProxyId) {
     const active = (customProxySettings.proxies || []).find((p) => p.id === customProxySettings.activeProxyId);
     if (active) {
       plog('[ProxyEngine] Activating Custom Proxy Mode:', active.name);
-      await applyProxyToSession(active);
-      result = { mode: 'custom', proxy: active };
+      const applyRes = await applyProxyToSession(active);
+      result = { mode: 'custom', proxy: active, ...applyRes };
     } else {
       await applyProxyToSession(null);
       plog('[ProxyEngine] Active proxy not found, falling back to direct connection');
     }
   } else {
     // 2. Прямое подключение
-    await applyProxyToSession(null);
+    const applyRes = await applyProxyToSession(null);
+    result = { mode: 'direct', ...applyRes };
     plog('[ProxyEngine] Direct connection active');
   }
 

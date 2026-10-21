@@ -33,11 +33,19 @@ const RU: Record<string, string> = {
   EthernetSectionBlur: 'Блюр',
   EthernetSectionWallpaper: 'Обои',
   EthernetSectionAnimations: 'Анимации',
+  EthernetSectionChat: 'Чат',
+  EthernetSectionOther: 'Другие настройки',
   EthernetBorderRadius: 'Радиус скруглений',
   EthernetRadiusUi: 'Интерфейс и панели',
   EthernetRadiusFoldersSidebar: 'Боковое меню папок',
+  EthernetRadiusTopbar: 'Верхняя панель',
   EthernetRadiusMessages: 'Пузыри сообщений',
-  EthernetRadiusButtons: 'Кнопки и поля ввода',
+  EthernetRadiusButtons: 'Кнопки',
+  EthernetRadiusInput: 'Поле ввода',
+  EthernetWallpaperColor: 'Цвет',
+  EthernetWallpaperColorTitle: 'Сплошной цвет обоев',
+  EthernetSelectedColor: 'Выбранный цвет',
+  EthernetEditCssCode: 'Редактировать CSS-код',
   EthernetRadiusAvatars: 'Аватары (%)',
   EthernetColorBackground: 'Фон',
   EthernetColorBackgroundSecondary: 'Вторичный фон',
@@ -80,6 +88,7 @@ const RU: Record<string, string> = {
   EthernetWidthDefault: 'Обычная',
   EthernetWidthWide: 'Широкая',
   EthernetWidthFull: 'На всю ширину',
+  EthernetHideTitlebar: 'Скрыть тайтлбар',
 };
 
 export default RU;

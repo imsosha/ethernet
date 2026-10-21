@@ -4,6 +4,7 @@ import { getActions } from '../../global';
 
 import type {
   ApiGeoPoint,
+  ApiMessage,
   ApiPageBlock,
   ApiPageBlockBlockquote,
   ApiPageBlockBlockquoteBlocks,
@@ -27,11 +28,12 @@ import type {
 } from '../../api/types';
 import type { ObserveFn } from '../../hooks/useIntersectionObserver';
 import type { LangFn } from '../../util/localization';
-import { MediaViewerOrigin, type ThemeKey, type ThreadId } from '../../types';
+import { AudioOrigin, MediaViewerOrigin, type ThemeKey, type ThreadId } from '../../types';
 
 import { DEBUG, TME_LINK_PREFIX } from '../../config';
 import { getRichTextPlainText, hasRichText } from '../../global/helpers/richMessage';
 import { IS_MAC_OS, IS_TOUCH_ENV } from '../../util/browser/windowEnvironment';
+import { copyTextToClipboard } from '../../util/clipboard';
 import buildClassName from '../../util/buildClassName';
 import { formatDateTime } from '../../util/localization/dateFormat';
 import renderText from '../common/helpers/renderText';
@@ -57,6 +59,8 @@ import SafeLink from '../common/SafeLink';
 import { Breakout } from '../gili/layout/Surface';
 import Photo from '../middle/message/Photo';
 import Video from '../middle/message/Video';
+import Audio from '../common/Audio';
+import Document from '../common/Document';
 import Button from '../ui/Button';
 import Collage from './Collage';
 import EmbedFrame from './EmbedFrame';
@@ -373,6 +377,11 @@ const RichContent = ({
           />
         );
       case 'audio':
+        return renderAudioBlock(block, renderContext);
+      case 'document':
+        return renderDocumentBlock(block, renderContext);
+      case 'buttonRow':
+        return renderButtonRowBlock(block, renderContext);
       case 'unsupported':
         return renderUnsupportedBlock(unsupportedText, block.type);
     }
@@ -434,7 +443,8 @@ function isBreakoutMediaBlock(block: ApiPageBlock) {
   return block.type === 'photo'
     || block.type === 'video'
     || block.type === 'collage'
-    || block.type === 'slideshow';
+    || block.type === 'slideshow'
+    || block.type === 'cover';
 }
 
 function TableBlock({
@@ -458,9 +468,10 @@ function TableBlock({
         block.title, styles.tableTitle, renderContext, 'tableTitle',
       )}
       <table
-        className={buildClassName(styles.table, block.isBordered && styles.bordered)}
+        className={buildClassName(styles.table, block.isBordered && styles.bordered, block.isCompact && styles.compact)}
         data-bordered={String(Boolean(block.isBordered))}
         data-striped={String(Boolean(block.isStriped))}
+        data-compact={String(Boolean(block.isCompact))}
       >
         <tbody>
           {block.rows.map((row, rowIndex) => {
@@ -572,6 +583,134 @@ function renderPhotoBlock(
       />
       {renderCaption(block.caption, context)}
     </figure>
+  );
+}
+
+function renderAudioBlock(
+  block: Extract<ApiPageBlock, { type: 'audio' }>,
+  context: RenderBlockContext,
+) {
+  if (!block.audio) {
+    return renderUnsupportedBlock(context.unsupportedText, 'audio');
+  }
+
+  const syntheticMessage = {
+    id: context.richTextContext.messageId || 0,
+    chatId: context.richTextContext.chatId || '',
+    threadId: context.richTextContext.threadId,
+    content: { audio: block.audio },
+  } as ApiMessage;
+
+  return (
+    <figure className={styles.figure}>
+      <Audio
+        theme={context.theme}
+        message={syntheticMessage}
+        origin={AudioOrigin.Inline}
+        noAvatars={context.noAvatars}
+        canDownload={!context.isProtected}
+        observeIntersectionForPlaying={context.observeIntersectionForPlaying}
+      />
+      {renderCaption(block.caption, context)}
+    </figure>
+  );
+}
+
+function renderDocumentBlock(
+  block: Extract<ApiPageBlock, { type: 'document' }>,
+  context: RenderBlockContext,
+) {
+  if (!block.document) {
+    return renderUnsupportedBlock(context.unsupportedText, 'document');
+  }
+
+  const syntheticMessage = {
+    id: context.richTextContext.messageId || 0,
+    chatId: context.richTextContext.chatId || '',
+    threadId: context.richTextContext.threadId,
+    content: { document: block.document },
+  } as ApiMessage;
+
+  return (
+    <figure className={styles.figure}>
+      <Document
+        message={syntheticMessage}
+        canAutoLoad={context.canAutoLoadMedia}
+        observeIntersection={context.observeIntersectionForLoading}
+      />
+      {renderCaption(block.caption, context)}
+    </figure>
+  );
+}
+
+function renderButtonRowBlock(
+  block: Extract<ApiPageBlock, { type: 'buttonRow' }>,
+  context: RenderBlockContext,
+) {
+  const isSingleButton = block.buttons.length === 1;
+  const alignClass = isSingleButton && block.align === 'center'
+    ? styles.buttonRowCenter
+    : isSingleButton && block.align === 'right'
+      ? styles.buttonRowRight
+      : isSingleButton && block.align === 'left'
+        ? styles.buttonRowLeft
+        : undefined;
+
+  return (
+    <div className={buildClassName(styles.buttonRow, alignClass)}>
+      {block.buttons.map((btn, index) => {
+        const color = btn.style?.isDanger
+          ? 'danger'
+          : btn.style?.isSuccess
+            ? 'primary'
+            : btn.style?.isPrimary
+              ? 'primary'
+              : 'secondary';
+
+        const isLink = Boolean(btn.style?.isLink || btn.buttonType.type === 'url');
+        const url = btn.buttonType.type === 'url' ? btn.buttonType.url : undefined;
+        const isCopy = btn.buttonType.type === 'copy';
+
+        const handleCopy = () => {
+          if (btn.buttonType.type === 'copy' && btn.buttonType.copyText) {
+            copyTextToClipboard(btn.buttonType.copyText);
+            getActions().showNotification({
+              message: context.lang('ExactTextCopied', btn.buttonType.copyText),
+            });
+          }
+        };
+
+        if (url) {
+          return (
+            <Button
+              key={index}
+              className={styles.pageButton}
+              color={color}
+              isText={isLink}
+              size="tiny"
+              ripple
+              href={url}
+            >
+              <RichText text={btn.text} {...context.richTextContext} />
+            </Button>
+          );
+        }
+
+        return (
+          <Button
+            key={index}
+            className={styles.pageButton}
+            color={color}
+            isText={isLink}
+            size="tiny"
+            ripple
+            onClick={isCopy ? handleCopy : undefined}
+          >
+            <RichText text={btn.text} {...context.richTextContext} />
+          </Button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -725,7 +864,11 @@ function renderQuoteBlock(
   context: RenderBlockContext,
 ) {
   return (
-    <Blockquote className={styles.block} contentClassName={styles.blockquote}>
+    <Blockquote
+      canBeCollapsible={block.canCollapse}
+      className={styles.block}
+      contentClassName={styles.blockquote}
+    >
       <RichText text={block.text} {...context.richTextContext} />
       {hasRichText(block.caption) && (
         <footer className={styles.quoteCaption} data-rich-block-type="quoteCaption">

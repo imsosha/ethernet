@@ -17,7 +17,7 @@ export default function useVideoAutoPause(
   const { play, pause } = usePlayPause(playerRef);
 
   const unfreezePlaying = useLastCallback(() => {
-    if (canPlayRef.current && (isPriority || !isFrozen())) {
+    if (canPlayRef.current && !isBackgroundModeActive() && (isPriority || !isFrozen())) {
       play();
     }
   });
@@ -26,19 +26,19 @@ export default function useVideoAutoPause(
     requestMeasure(unfreezePlaying);
   });
 
-  useBackgroundMode(pause, unfreezePlayingOnRaf, !canPlay || isPriority);
+  useBackgroundMode(pause, unfreezePlayingOnRaf, !canPlay);
   useHeavyAnimation(pause, unfreezePlaying, !canPlay || isPriority);
   usePriorityPlaybackCheck(pause, unfreezePlaying, !canPlay || isPriority);
 
   const handlePlaying = useLastCallback(() => {
-    if (!canPlayRef.current || (!isPriority && isFrozen())) {
+    if (!canPlayRef.current || isBackgroundModeActive() || (!isPriority && isFrozen())) {
       pause();
     }
   });
 
   useEffect(() => {
     if (canPlay) {
-      if (isPriority || !isFrozen()) {
+      if (!isBackgroundModeActive() && (isPriority || !isFrozen())) {
         play();
       }
     } else {

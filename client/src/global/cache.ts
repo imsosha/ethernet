@@ -291,6 +291,25 @@ function unsafeMigrateCache(cached: GlobalState, initialState: GlobalState) {
   const untypedCached = cached as any;
   Object.values(cached.messages.byChatId).forEach((messageStore) => {
     messageStore.ephemeralById ||= {};
+    if (messageStore.byId) {
+      Object.keys(messageStore.byId).forEach((idStr) => {
+        const msg = messageStore.byId[Number(idStr)];
+        if (msg && (!msg.content || Object.keys(msg.content).length === 0)) {
+          const numId = Number(idStr);
+          delete messageStore.byId[numId];
+          if (messageStore.threadsById) {
+            Object.values(messageStore.threadsById).forEach((thread) => {
+              if (thread.viewportIds) {
+                thread.viewportIds = thread.viewportIds.filter((id) => id !== numId);
+              }
+              if (thread.listedIds) {
+                thread.listedIds = thread.listedIds.filter((id) => id !== numId);
+              }
+            });
+          }
+        }
+      });
+    }
   });
 
   // Pre-fill settings with defaults

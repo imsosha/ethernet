@@ -142,10 +142,10 @@
     &.primary {
       --ripple-color: rgba(0, 0, 0, 0.08);
       --button-text-color: var(--color-white);
-      --button-background-color: var(--color-primary);
+      --button-background-color: color-mix(in srgb, var(--color-primary) 70%, black);
       --button-active-text-color: var(--color-white);
-      --button-active-background-color: color-mix(in srgb, var(--color-primary) 85%, black);
-      --button-no-ripple-background-color: color-mix(in srgb, var(--color-primary) 80%, black);
+      --button-active-background-color: color-mix(in srgb, var(--color-primary) 60%, black);
+      --button-no-ripple-background-color: color-mix(in srgb, var(--color-primary) 55%, black);
     }
 
     &.secondary {

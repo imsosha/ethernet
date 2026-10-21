@@ -2,6 +2,9 @@
 
 .theme-editor {
   padding-bottom: 2rem;
+  overflow-x: hidden !important;
+  max-width: 100%;
+  box-sizing: border-box;
 
   // Фикс вылета слайдеров за границы контейнера
   .RangeSlider {
@@ -20,29 +23,224 @@
   }
 }
 
-.theme-editor-top-actions {
+.theme-editor-island-btn {
+  margin: 0 1rem 0.75rem !important;
+  cursor: pointer;
+}
+
+// Карточка настроек (не гармошка)
+.theme-editor-card {
+  margin: 0 1rem 0.75rem;
+  padding: 1rem;
+  border-radius: var(--border-radius-default);
+  background: var(--color-background);
+  box-shadow: var(--shadow-chat-list-panel);
   display: flex;
-  justify-content: flex-end;
-  padding: 0 1rem 0.625rem;
+  flex-direction: column;
+  gap: 0.875rem;
+}
 
-  .theme-editor-css-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    font-size: 0.8125rem;
-    font-weight: var(--font-weight-medium, 500);
-    border-radius: var(--border-radius-buttons, 0.75rem);
-    background: color-mix(in srgb, var(--color-background-secondary, #212328) 85%, transparent);
-    color: var(--color-text, #f3f4f6);
+.theme-editor-card-header {
+  font-size: 1rem;
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--color-text);
+  margin: 0;
+}
 
-    &:hover {
-      background: color-mix(in srgb, var(--color-background-secondary, #212328) 98%, transparent);
-    }
+// Выпадающий селектор выбора цвета
+.color-picker-select-wrapper {
+  position: relative;
+  width: 100%;
+}
 
-    i, svg {
-      font-size: 1.125rem;
+.color-picker-select-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  border: none;
+  border-radius: var(--border-radius-default-small);
+  background: var(--color-background-secondary);
+  color: var(--color-text);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  text-align: left;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background: var(--color-chat-hover, rgba(255, 255, 255, 0.08));
+  }
+
+  .color-selected-swatch {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 1px rgba(128, 128, 128, 0.3);
+  }
+
+  .color-selected-title {
+    flex: 1;
+    font-weight: 500;
+  }
+
+  .color-selected-hex {
+    font-family: monospace;
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+  }
+
+  .color-select-chevron {
+    color: var(--color-text-secondary);
+    transition: transform 0.2s ease;
+    &.open {
+      transform: rotate(180deg);
     }
   }
+}
+
+.color-picker-dropdown-list {
+  position: absolute;
+  top: calc(100% + 0.375rem);
+  left: 0;
+  right: 0;
+  max-height: 16rem;
+  overflow-y: auto;
+  background: var(--color-background-secondary);
+  border-radius: var(--border-radius-default-small);
+  box-shadow: var(--shadow-default, 0 8px 24px rgba(0, 0, 0, 0.35));
+  z-index: 50;
+  padding: 0.375rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  animation: colorDropdownAppear 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: top center;
+}
+
+@keyframes colorDropdownAppear {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.color-picker-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.625rem;
+  border: none;
+  border-radius: var(--border-radius-default-small);
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.875rem;
+  text-align: left;
+  width: 100%;
+  transition: background-color 0.12s ease;
+
+  &:hover, &.active {
+    background: var(--color-chat-hover, rgba(255, 255, 255, 0.08));
+  }
+
+  &.active {
+    font-weight: 600;
+  }
+
+  .color-item-swatch {
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 1px rgba(128, 128, 128, 0.3);
+  }
+
+  .color-item-title {
+    flex: 1;
+  }
+
+  .color-item-hex {
+    font-family: monospace;
+    font-size: 0.8125rem;
+    color: var(--color-text-secondary);
+  }
+}
+
+// Быстрые чипы всех цветов
+.color-chips-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0;
+}
+
+.color-chip {
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  outline: none;
+  box-shadow: 0 0 0 1px rgba(128, 128, 128, 0.25);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, width 0.15s ease, height 0.15s ease;
+
+  &:hover {
+    transform: scale(1.15);
+  }
+
+  &.active {
+    width: 1.375rem;
+    height: 1.375rem;
+    transform: scale(1.05);
+    box-shadow: 0 0 0 2px var(--color-primary), 0 0 8px var(--color-primary);
+  }
+}
+
+.color-hex-field {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--border-radius-default-small);
+  background: var(--color-background-secondary);
+  font-family: monospace;
+  font-size: 0.8125rem;
+  color: var(--color-text);
+  gap: 0.15rem;
+
+  .color-hex-hash {
+    color: var(--color-text-secondary);
+  }
+
+  input {
+    border: none;
+    background: none;
+    color: inherit;
+    font-family: inherit;
+    font-size: inherit;
+    outline: none;
+    width: 4.25rem;
+  }
+}
+
+.wallpaper-color-picker-box {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-borders, rgba(128, 128, 128, 0.15));
 }
 
 // Секция-аккордеон
@@ -263,7 +461,7 @@
   pointer-events: none;
 }
 
-// Ряд слайдера Hue + Пипетка
+// Ряд слайдера Hue + Пипетка + HEX поле
 .hue-bar-row {
   display: flex;
   align-items: center;
@@ -274,6 +472,7 @@
   -webkit-appearance: none;
   appearance: none;
   flex: 1;
+  min-width: 0;
   height: 0.875rem;
   border-radius: 0.4375rem;
   outline: none;
@@ -296,12 +495,13 @@
 .eyedropper-button {
   width: 1.875rem;
   height: 1.875rem;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   border: none;
   border-radius: var(--border-radius-default-small);
-  background: var(--color-background);
+  background: var(--color-background-secondary);
   color: var(--color-text);
   cursor: pointer;
   outline: none;
@@ -309,7 +509,7 @@
   transition: background 0.15s ease;
 
   &:hover {
-    background: var(--color-chat-hover, rgba(255, 255, 255, 0.06));
+    background: var(--color-chat-hover, rgba(255, 255, 255, 0.08));
   }
 }
 

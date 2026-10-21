@@ -284,7 +284,7 @@ const AnimatedSticker = ({
   // Pausing frame may not happen in background,
   // so we need to make sure it happens right after focusing,
   // then we can play again.
-  useBackgroundMode(pauseAnimation, playAnimationOnRaf, !playKey || forceAlways);
+  useBackgroundMode(pauseAnimation, playAnimationOnRaf, !playKey);
 
   if (sharedCanvas) {
     return undefined;
@@ -310,6 +310,7 @@ const AnimatedSticker = ({
 export default memo(AnimatedSticker);
 
 function isFrozen(forceAlways = false, forceOnHeavyAnimation = false) {
+  if (isBackgroundModeActive()) return true;
   if (forceAlways) return false;
-  return (!forceOnHeavyAnimation && getIsHeavyAnimating()) || isPriorityPlaybackActive() || isBackgroundModeActive();
+  return (!forceOnHeavyAnimation && getIsHeavyAnimating()) || isPriorityPlaybackActive();
 }

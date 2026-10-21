@@ -22,7 +22,6 @@ import {
 import AudioPlayer from '../../../middle/panes/AudioPlayer';
 import FrozenAccountPane from './FrozenAccountPane';
 import GiftAuctionPane from './GiftAuctionPane';
-import SuggestionPane from './SuggestionPane';
 import UnconfirmedSessionPane from './UnconfirmedSessionPane';
 
 import styles from './ChatListPanes.module.scss';
@@ -56,7 +55,6 @@ const ChatListPanes = ({
   const [getFrozenAccountState, setFrozenAccountState] = useSignal<PaneState>(FALLBACK_PANE_STATE);
   const [getUnconfirmedSessionState, setUnconfirmedSessionState] = useSignal<PaneState>(FALLBACK_PANE_STATE);
   const [getGiftAuctionState, setGiftAuctionState] = useSignal<PaneState>(FALLBACK_PANE_STATE);
-  const [getSuggestionState, setSuggestionState] = useSignal<PaneState>(FALLBACK_PANE_STATE);
 
   const ref = useRef<HTMLDivElement>();
   const [visualTokenRef, invalidateVisualToken] = useCacheBusterRef();
@@ -80,7 +78,6 @@ const ChatListPanes = ({
   }, [sessions]);
 
   const canShowUnconfirmedSession = !isAccountFrozen && !isForumPanelOpen && unconfirmedSession;
-  const canShowSuggestions = !isAccountFrozen && !isForumPanelOpen && !unconfirmedSession && promoData;
   const canShowGiftAuctions = !isAccountFrozen && !isForumPanelOpen;
 
   useSignalEffect(() => {
@@ -90,7 +87,6 @@ const ChatListPanes = ({
       getFrozenAccountState(),
       getUnconfirmedSessionState(),
       getGiftAuctionState(),
-      getSuggestionState(),
     ];
 
     const totalHeight = stateArray.reduce((acc, state) => acc + state.height, 0);
@@ -118,7 +114,7 @@ const ChatListPanes = ({
       }
     });
   }, [
-    getPlayerState, getFrozenAccountState, getUnconfirmedSessionState, getGiftAuctionState, getSuggestionState,
+    getPlayerState, getFrozenAccountState, getUnconfirmedSessionState, getGiftAuctionState,
   ]);
 
   return (
@@ -151,10 +147,6 @@ const ChatListPanes = ({
           <GiftAuctionPane
             canShow={canShowGiftAuctions}
             onPaneStateChange={setGiftAuctionState}
-          />
-          <SuggestionPane
-            promoData={canShowSuggestions ? promoData : undefined}
-            onPaneStateChange={setSuggestionState}
           />
         </>
       )}

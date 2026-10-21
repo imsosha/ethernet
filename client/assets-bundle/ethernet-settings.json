@@ -1,7 +1,5 @@
 {
-  "enabledPlugins": [
-    "peer-id-dc"
-  ],
+  "enabledPlugins": [],
   "theme": "eth",
   "mod": {
     "colors": {
@@ -24,8 +22,11 @@
     },
     "radii": {
       "ui": 16,
+      "topbar": 24,
+      "foldersSidebar": 24,
       "messages": 16,
       "buttons": 12,
+      "input": 24,
       "avatars": 50
     },
     "borderRadius": 16,
@@ -55,5 +56,6 @@
   },
   "disableAllNotifications": false,
   "disableCloseToTray": false,
-  "safeMode": false
+  "safeMode": false,
+  "pluginPermissions": {}
 }

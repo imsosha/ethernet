@@ -7,6 +7,7 @@ import { requestMeasure } from '../../../../lib/fasterdom/fasterdom';
 import { clamp } from '../../../../util/math';
 
 import useLastCallback from '../../../../hooks/useLastCallback';
+import { isAnimatingScroll } from '../../../../util/animateScroll';
 import { isBackgroundModeActive } from '../../../../hooks/window/useBackgroundMode';
 
 const INITIAL_GRACE_MS = 300;
@@ -218,6 +219,14 @@ function createMessageReadMetricsTracker(container: HTMLElement) {
   }
 
   function handleIntersection(entries: IntersectionObserverEntry[]) {
+    if (
+      typeof document !== 'undefined'
+      && (document.body.classList.contains('is-resizing-left-column')
+        || document.body.classList.contains('is-animating-left-column'))
+    ) {
+      return;
+    }
+
     const now = Date.now();
 
     entries.forEach((entry) => {
@@ -240,10 +249,20 @@ function createMessageReadMetricsTracker(container: HTMLElement) {
   }
 
   function handleResize() {
+    if (
+      typeof document !== 'undefined'
+      && (document.body.classList.contains('is-resizing-left-column')
+        || document.body.classList.contains('is-animating-left-column'))
+    ) {
+      return;
+    }
     scheduleMeasure();
   }
 
   function handleScroll() {
+    if (isAnimatingScroll(container)) {
+      return;
+    }
     handleActivity();
     scheduleMeasure();
   }
@@ -288,6 +307,13 @@ function createMessageReadMetricsTracker(container: HTMLElement) {
   }
 
   function scheduleMeasure() {
+    if (
+      typeof document !== 'undefined'
+      && (document.body.classList.contains('is-resizing-left-column')
+        || document.body.classList.contains('is-animating-left-column'))
+    ) {
+      return;
+    }
     if (isMeasureScheduled || isDestroyed) return;
 
     isMeasureScheduled = true;
@@ -297,6 +323,13 @@ function createMessageReadMetricsTracker(container: HTMLElement) {
   function measureMessages() {
     isMeasureScheduled = false;
     if (isDestroyed) return;
+    if (
+      typeof document !== 'undefined'
+      && (document.body.classList.contains('is-resizing-left-column')
+        || document.body.classList.contains('is-animating-left-column'))
+    ) {
+      return;
+    }
 
     const now = Date.now();
     const containerRect = container.getBoundingClientRect();

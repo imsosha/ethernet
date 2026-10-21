@@ -159,6 +159,13 @@
 
   .SearchInput {
     transition: opacity var(--layer-transition);
+    border-color: transparent !important;
+
+    &.has-focus {
+      border-color: transparent !important;
+      outline: none !important;
+      box-shadow: none !important;
+    }
 
     &--hidden {
       pointer-events: none;
@@ -218,3 +225,94 @@
   max-width: 20rem;
   max-height: calc(100 * var(--vh) - 3.75rem);
 }
+
+.collapsed-expand-btn {
+  display: none !important;
+}
+
+#LeftMainHeader {
+  .main-menu,
+  .DropdownMenu,
+  .DropdownMenuFiller,
+  .SearchInput,
+  .StatusButton,
+  .extra-spacing {
+    transition: opacity 0.2s ease 0.05s;
+  }
+}
+
+:root[data-left-column-collapsed="true"] #LeftMainHeader,
+:root.left-column-is-collapsed #LeftMainHeader,
+#LeftColumn.is-collapsed #LeftMainHeader,
+.LeftMainHeader.is-collapsed #LeftMainHeader,
+#LeftMainHeader.is-collapsed {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: var(--column-header-height) !important;
+  padding: 0.5rem 0 !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+
+  .main-menu,
+  .DropdownMenu,
+  .DropdownMenuFiller,
+  .SearchInput,
+  .StatusButton,
+  .extra-spacing,
+  .ShowTransition {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    transform: scale(0.9) !important;
+    transition: opacity 250ms cubic-bezier(0.33, 1, 0.68, 1), transform 250ms cubic-bezier(0.33, 1, 0.68, 1), visibility 250ms !important;
+  }
+
+  .collapsed-expand-btn {
+    display: flex !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    transform: scale(1) !important;
+    transition: opacity 250ms cubic-bezier(0.33, 1, 0.68, 1), transform 250ms cubic-bezier(0.33, 1, 0.68, 1), visibility 250ms !important;
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+    min-width: 2.5rem !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 50% !important;
+    background-color: var(--color-interactive-inactive, var(--color-chat-hover, rgba(255, 255, 255, 0.12))) !important;
+    color: var(--color-text, #ffffff) !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25) !important;
+    cursor: pointer !important;
+    transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease !important;
+
+    &:hover {
+      background-color: var(--color-primary) !important;
+      color: var(--color-white, #ffffff) !important;
+      transform: scale(1.12) !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35) !important;
+
+      .icon,
+      .collapsed-expand-icon {
+        color: var(--color-white, #ffffff) !important;
+      }
+    }
+
+    .icon,
+    .collapsed-expand-icon {
+      font-size: 1.25rem !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      line-height: 1 !important;
+      color: var(--color-text, #ffffff) !important;
+    }
+  }
+}
+
+

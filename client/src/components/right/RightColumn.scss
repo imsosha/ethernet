@@ -172,8 +172,10 @@
 }
 
 #Main.right-column-shown #RightColumn-wrapper #RightColumn.is-profile-view,
+#Main.right-column-closing #RightColumn-wrapper #RightColumn.is-profile-view,
 #Main.right-column-open #RightColumn-wrapper #RightColumn.is-profile-view,
 #Main.right-column-shown #RightColumn.is-profile-view,
+#Main.right-column-closing #RightColumn.is-profile-view,
 #Main.right-column-open #RightColumn.is-profile-view {
   position: absolute !important;
   top: 0.5rem !important;
@@ -191,6 +193,7 @@
   pointer-events: auto !important;
   display: block !important;
   visibility: visible !important;
+  opacity: 1 !important;
   background-color: var(--color-background-secondary) !important;
   background: var(--color-background-secondary) !important;
   overflow: hidden !important;
@@ -200,37 +203,41 @@
   transition: transform var(--layer-transition, 300ms cubic-bezier(0.33, 1, 0.68, 1)) !important;
 }
 
-#Main.right-column-open #RightColumn-wrapper #RightColumn.is-profile-view,
-#Main.right-column-open #RightColumn.is-profile-view {
+#Main.right-column-open:not(.right-column-closing) #RightColumn-wrapper #RightColumn.is-profile-view,
+#Main.right-column-open:not(.right-column-closing) #RightColumn.is-profile-view {
   transform: translate3d(0, 0, 0) !important;
   pointer-events: auto !important;
 }
 
 #Main:not(.right-column-open) #RightColumn-wrapper #RightColumn.is-profile-view,
-#Main:not(.right-column-open) #RightColumn.is-profile-view {
+#Main:not(.right-column-open) #RightColumn.is-profile-view,
+#Main.right-column-closing #RightColumn-wrapper #RightColumn.is-profile-view,
+#Main.right-column-closing #RightColumn.is-profile-view {
   transform: translate3d(calc(100% + 1.5rem), 0, 0) !important;
   pointer-events: none !important;
 }
 
-#Main:not(.right-column-shown) #RightColumn-wrapper #RightColumn.is-profile-view,
-#Main:not(.right-column-shown) #RightColumn.is-profile-view {
+#Main.right-column-shown #RightColumn-wrapper,
+#Main.right-column-closing #RightColumn-wrapper {
+  display: block !important;
+  visibility: visible !important;
+}
+
+#Main:not(.right-column-shown):not(.right-column-closing) #RightColumn-wrapper #RightColumn.is-profile-view,
+#Main:not(.right-column-shown):not(.right-column-closing) #RightColumn.is-profile-view,
+#Main:not(.right-column-shown):not(.right-column-closing) #RightColumn-wrapper {
   display: none !important;
   pointer-events: none !important;
   visibility: hidden !important;
 }
 
-#RightColumn.opens-left,
-#RightColumn[data-side="left"],
 html[data-profile-position="left"] #RightColumn {
   right: auto !important;
   left: 0.5rem !important;
 }
 
-#Main:not(.right-column-open) #RightColumn-wrapper #RightColumn.is-profile-view.opens-left,
-#Main:not(.right-column-open) #RightColumn-wrapper #RightColumn.is-profile-view[data-side="left"],
-#Main:not(.right-column-open) #RightColumn.is-profile-view.opens-left,
-#Main:not(.right-column-open) #RightColumn.is-profile-view[data-side="left"],
-html[data-profile-position="left"] #Main:not(.right-column-open) #RightColumn {
+html[data-profile-position="left"] #Main:not(.right-column-open) #RightColumn,
+html[data-profile-position="left"] #Main.right-column-closing #RightColumn {
   transform: translate3d(calc(-100% - 1.5rem), 0, 0) !important;
   pointer-events: none !important;
 }

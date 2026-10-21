@@ -8,29 +8,14 @@
 
   text-align: left;
 
-  &.folders-sidebar-visible {
-    grid-template-columns: auto auto 1fr;
-  }
-
-  @media (min-width: 1276px) {
-    position: relative;
-  }
-
-  @media (max-width: 600px) {
-    // iOS reveal-scrolls the document when the keyboard opens; a `--vh`-based height races that scroll and
-    // leaves a bare strip below the wallpaper. Pin `#Main` to the layout viewport so it always covers the
-    // visible area regardless of timing. (Ported from scroll-fixes-after-composer-redesign.)
-    position: fixed;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-  }
-
-  @media (min-width: 926px) {
+  @media (min-width: 601px) {
     display: grid;
     grid-template-columns: auto 1fr;
     grid-template-rows: 100%;
+
+    &.folders-sidebar-visible {
+      grid-template-columns: auto auto 1fr;
+    }
   }
 }
 
@@ -73,8 +58,10 @@
 }
 
 #LeftColumn {
-  --left-column-min-width: 16rem;
-  --left-column-max-width: 30rem;
+  container-name: left-column;
+  container-type: inline-size;
+  --left-column-min-width: 4.25rem;
+  --left-column-max-width: 35rem;
   --slide-background-color: transparent;
 
   position: relative;
@@ -92,29 +79,20 @@
   background-color: var(--color-background);
   box-shadow: var(--shadow-island);
 
-  transition: height var(--layer-transition), max-height var(--layer-transition), transform var(--layer-transition);
+  transition: width var(--layer-transition, 320ms cubic-bezier(0.33, 1, 0.68, 1)),
+              max-width var(--layer-transition, 320ms cubic-bezier(0.33, 1, 0.68, 1));
 
-  @media (min-width: 926px) {
-    --left-column-max-width: 40vw;
-
+  @media (min-width: 601px) {
     .folders-sidebar-visible & {
-      --left-column-max-width: calc(40vw - var(--folders-sidebar-width));
-
       margin-left: 0.5rem;
     }
   }
 
   @media (min-width: 1276px) {
-    --left-column-max-width: 33vw;
-
-    width: 25vw;
-
-    .folders-sidebar-visible & {
-      --left-column-max-width: calc(33vw - var(--folders-sidebar-width));
-    }
+    width: var(--left-column-width, 27rem);
   }
 
-  @media (max-width: 925px) {
+  @media (max-width: 600px) {
     position: fixed;
     top: 1rem;
     left: 1rem;
@@ -236,7 +214,6 @@
 }
 
 #MiddleColumn {
-  contain: layout;
 
   #Main.history-animation-disabled & {
     transition: none;
@@ -246,7 +223,7 @@
     }
   }
 
-  @media (max-width: 925px) {
+  @media (max-width: 600px) {
     position: fixed;
     top: 0;
     right: 0;
@@ -283,7 +260,7 @@
   }
 }
 
-@media (max-width: 925px) {
+@media (max-width: 600px) {
   .folders-sidebar-visible {
     #FoldersSidebar {
       position: fixed;
@@ -307,3 +284,227 @@
     }
   }
 }
+
+:root:not(.is-resizing-left-column)[data-left-column-is-chat-list="false"] {
+  --left-column-width: var(--saved-left-column-width, 27rem) !important;
+}
+
+:root:not(.is-resizing-left-column)[data-left-column-collapsed="true"]:not([data-left-column-is-chat-list="false"]),
+:root:not(.is-resizing-left-column).left-column-is-collapsed:not([data-left-column-is-chat-list="false"]) {
+  --left-column-width: 4.25rem !important;
+}
+
+:root:not(.is-resizing-left-column) #LeftColumn.is-collapsed:not(.has-opened-content),
+:root:not(.is-resizing-left-column)[data-left-column-collapsed="true"]:not([data-left-column-is-chat-list="false"]) #LeftColumn:not(.has-opened-content),
+:root:not(.is-resizing-left-column).left-column-is-collapsed:not([data-left-column-is-chat-list="false"]) #LeftColumn:not(.has-opened-content) {
+  --left-column-width: 4.25rem !important;
+  width: 4.25rem !important;
+  min-width: 4.25rem !important;
+  max-width: 4.25rem !important;
+  box-sizing: border-box !important;
+}
+
+#LeftColumn.is-collapsed:not(.has-opened-content),
+:root[data-left-column-collapsed="true"]:not([data-left-column-is-chat-list="false"]) #LeftColumn:not(.has-opened-content),
+:root.left-column-is-collapsed:not([data-left-column-is-chat-list="false"]) #LeftColumn:not(.has-opened-content) {
+  #LeftColumn-main {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    box-sizing: border-box !important;
+
+    #LeftMainHeader {
+      height: var(--column-header-height) !important;
+      flex-shrink: 0 !important;
+    }
+
+    > .Transition {
+      width: 100% !important;
+      max-width: 100% !important;
+      flex: 1 !important;
+      min-height: 0 !important;
+    }
+
+    .ChatFolders {
+      width: 100% !important;
+      max-width: 100% !important;
+      height: 100% !important;
+
+      .tabs-placeholder,
+      .ChatFolderTabList {
+        opacity: 0 !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+        max-height: 0 !important;
+        overflow: hidden !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        transition: opacity 250ms cubic-bezier(0.33, 1, 0.68, 1), max-height 250ms cubic-bezier(0.33, 1, 0.68, 1), visibility 250ms !important;
+      }
+    }
+
+    .ChatFolders-content {
+      width: 100% !important;
+      max-width: 100% !important;
+      flex: 1 !important;
+      min-height: 0 !important;
+      margin-top: 0 !important;
+      padding-top: 0 !important;
+
+      > .Transition,
+      &.with-tabs > .Transition {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+        flex: 1 !important;
+      }
+
+      .chat-list,
+      &.with-tabs .chat-list {
+        padding-top: 0.25rem !important;
+      }
+    }
+
+    .chat-list {
+      width: 100% !important;
+      min-width: 0 !important;
+      max-width: 100% !important;
+      padding-top: 0.25rem !important;
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+      overflow-x: hidden !important;
+      box-sizing: border-box !important;
+    }
+  }
+
+  .NewChatButton {
+    right: auto !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    margin: 0 auto !important;
+    transition: left 250ms cubic-bezier(0.33, 1, 0.68, 1), transform 250ms cubic-bezier(0.33, 1, 0.68, 1) !important;
+
+    &.revealed {
+      transform: translateX(-50%) translateY(0) !important;
+    }
+  }
+}
+
+:root:not(.is-resizing-left-column)[data-left-column-collapsed="true"] #LeftColumn.has-opened-content,
+:root:not(.is-resizing-left-column).left-column-is-collapsed #LeftColumn.has-opened-content,
+:root:not(.is-resizing-left-column) #LeftColumn.has-opened-content {
+  --left-column-min-width: 25rem !important;
+  --left-column-max-width: 35rem !important;
+  --left-column-width: var(--saved-left-column-width, 27rem) !important;
+  width: var(--saved-left-column-width, 27rem) !important;
+  min-width: 25rem !important;
+  max-width: 35rem !important;
+  flex-basis: var(--saved-left-column-width, 27rem) !important;
+  box-sizing: border-box !important;
+}
+
+body.is-animating-left-column,
+:root.is-animating-left-column {
+  #LeftColumn {
+    min-width: 0 !important;
+    max-width: 30rem !important;
+    transition: width 320ms cubic-bezier(0.33, 1, 0.68, 1) !important;
+  }
+
+  #Main.right-column-open:not(.right-column-closing) #LeftColumn {
+    max-width: 23rem !important;
+  }
+
+  #MiddleColumn * {
+    transition: none !important;
+  }
+
+  #MiddleColumn {
+    .messages-layout,
+    .MessageList,
+    .MiddleHeader,
+    .middle-column-footer {
+      pointer-events: none !important;
+    }
+  }
+}
+
+body.is-resizing-left-column,
+:root.is-resizing-left-column {
+  user-select: none !important;
+  cursor: ew-resize !important;
+
+  #Main,
+  #LeftColumn,
+  #LeftColumn *,
+  #MiddleColumn,
+  #RightColumn-wrapper {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  #Main {
+    pointer-events: none !important;
+  }
+
+  .resize-handle {
+    pointer-events: auto !important;
+    cursor: ew-resize !important;
+  }
+
+  #LeftColumn,
+  #LeftColumn.has-opened-content {
+    will-change: width;
+    max-width: 35rem !important;
+    min-width: 4.25rem !important;
+    flex-basis: auto !important;
+    flex-shrink: 0 !important;
+    flex-grow: 0 !important;
+    transition: none !important;
+  }
+
+  #MiddleColumn {
+    contain: strict !important;
+    pointer-events: none !important;
+    transition: none !important;
+
+    * {
+      pointer-events: none !important;
+    }
+  }
+
+  #Main.right-column-open:not(.right-column-closing) #LeftColumn {
+    max-width: 23rem !important;
+  }
+
+  #Main {
+    @media (min-width: 601px) {
+      grid-template-columns: auto 1fr !important;
+
+      &.folders-sidebar-visible {
+        grid-template-columns: auto auto 1fr !important;
+      }
+    }
+  }
+
+  iframe {
+    pointer-events: none !important;
+  }
+}
+
+@media (min-width: 900px) {
+  :root[data-sidebar-pinned="true"]:not([data-profile-mode="overlay"]) #Main.right-column-open,
+  :root[data-profile-mode="shift"][data-sidebar-pinned="true"] #Main.right-column-open {
+    #MiddleColumn {
+      margin-right: calc(var(--custom-right-column-width, 25.5rem) + 0.5rem) !important;
+      transition: margin-right var(--layer-transition, 300ms cubic-bezier(0.33, 1, 0.68, 1)) !important;
+    }
+
+    #RightColumn-wrapper .overlay-backdrop {
+      display: none !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+  }
+}
+
