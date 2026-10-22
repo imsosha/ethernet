@@ -492,4 +492,21 @@ module.exports = {
     write(s);
     return s.lastCrashedPlugin;
   },
+  // Сохранение/восстановление размеров и позиции главного окна
+  getWindowBounds: () => {
+    const s = read();
+    return s.windowBounds || null;
+  },
+  setWindowBounds: (bounds) => {
+    if (!bounds || typeof bounds !== 'object') return;
+    const s = read();
+    s.windowBounds = {
+      x: typeof bounds.x === 'number' ? bounds.x : undefined,
+      y: typeof bounds.y === 'number' ? bounds.y : undefined,
+      width: typeof bounds.width === 'number' ? Math.max(480, bounds.width) : 1280,
+      height: typeof bounds.height === 'number' ? Math.max(400, bounds.height) : 832,
+      isMaximized: Boolean(bounds.isMaximized),
+    };
+    write(s);
+  },
 };

@@ -360,17 +360,56 @@ function registerHermesFsHandlers() {
 
   regHandle('hermes:theme-activate', (_e, name) => {
     // name = "amoled" (без .css) или null чтобы сбросить
-    if (name !== null) {
-      const clean = path.basename(String(name || '')).replace(/\.(css|json|eth|eth-theme)$/i, '');
-      if (clean.includes('..')) throw new Error('bad name');
-      ethernetSettings.setTheme(clean);
-      const wp = ethernetSettings.getThemeWallpaper(clean);
-      return { theme: clean, wallpaper: wp };
+    const newThemeName = name !== null
+      ? path.basename(String(name || '')).replace(/\.(css|json|eth|eth-theme)$/i, '')
+      : null;
+
+    if (newThemeName && newThemeName.includes('..')) throw new Error('bad name');
+
+    // Узнаём предыдущую тему
+    const prevThemeName = ethernetSettings.getTheme();
+
+    if (newThemeName !== null) {
+      ethernetSettings.setTheme(newThemeName);
+      const wp = ethernetSettings.getThemeWallpaper(newThemeName);
+
+      // Автоматически управляем theme-bound плагинами
+      _syncThemePlugins(prevThemeName, newThemeName);
+
+      return { theme: newThemeName, wallpaper: wp };
     } else {
       ethernetSettings.setTheme(null);
+      // Деактивируем плагины прошлой темы
+      _syncThemePlugins(prevThemeName, null);
       return { theme: null, wallpaper: null };
     }
   });
+
+  // --- Синхронизация плагинов при смене темы ---
+  function _syncThemePlugins(prevTheme, nextTheme) {
+    try {
+      ensureDirs();
+      const dirs = fs.readdirSync(PLUGINS_DIR, { withFileTypes: true }).filter((d) => d.isDirectory());
+      for (const d of dirs) {
+        const manifest = readJsonSafe(d.name);
+        const dep = manifest.themeDependency || manifest.requiredForTheme;
+        if (!dep) continue;
+
+        const wasBoundToPrev = prevTheme && dep === prevTheme;
+        const isBoundToNext = nextTheme && dep === nextTheme;
+
+        if (wasBoundToPrev && !isBoundToNext) {
+          // Деактивируем плагин старой темы
+          ethernetSettings.setPluginEnabled(d.name, false);
+        } else if (isBoundToNext && !wasBoundToPrev) {
+          // Активируем плагин новой темы
+          ethernetSettings.setPluginEnabled(d.name, true);
+        }
+      }
+    } catch (err) {
+      console.warn('[ethernet-fs] syncThemePlugins error:', err.message);
+    }
+  }
 
   // --- Плагины ---
   regHandle('hermes:plugins-list', () => {

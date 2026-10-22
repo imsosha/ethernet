@@ -512,13 +512,17 @@ function registerAppProtocol() {
 function createWindow() {
   const iconPath = path.join(__dirname, '..', 'ethernet.ico');
   const appIcon = fs.existsSync(iconPath) ? nativeImage.createFromPath(iconPath) : undefined;
-  const win = new BrowserWindow({
+
+  // Восстанавливаем сохранённые размеры окна
+  const savedBounds = hermesSettings.getWindowBounds();
+  const winOpts = {
     title: 'ethernet',
-    width: 1280,
-    height: 832,
+    width: savedBounds ? savedBounds.width : 1280,
+    height: savedBounds ? savedBounds.height : 832,
     minWidth: 480,
     minHeight: 400,
     frame: false,
+    show: false,
     titleBarStyle: 'hidden',
     titleBarOverlay: false,
     icon: appIcon || (fs.existsSync(iconPath) ? iconPath : undefined),
@@ -531,7 +535,15 @@ function createWindow() {
       sandbox: false,
       backgroundThrottling: true,
     },
-  });
+  };
+
+  // Восстанавливаем позицию только если координаты были сохранены
+  if (savedBounds && typeof savedBounds.x === 'number' && typeof savedBounds.y === 'number') {
+    winOpts.x = savedBounds.x;
+    winOpts.y = savedBounds.y;
+  }
+
+  const win = new BrowserWindow(winOpts);
 
   if (appIcon && typeof win.setIcon === 'function') {
     try { win.setIcon(appIcon); } catch {}
@@ -545,14 +557,31 @@ function createWindow() {
   win.on('maximize', () => {
     if (!win.isDestroyed()) {
       win.webContents.send('hermes:window-maximized-changed', true);
+      hermesSettings.setWindowBounds({ ...win.getNormalBounds(), isMaximized: true });
     }
   });
 
   win.on('unmaximize', () => {
     if (!win.isDestroyed()) {
       win.webContents.send('hermes:window-maximized-changed', false);
+      const b = win.getBounds();
+      hermesSettings.setWindowBounds({ ...b, isMaximized: false });
     }
   });
+
+  // Сохраняем размеры окна при изменении (debounce 500ms)
+  let _boundsTimer = null;
+  const saveBounds = () => {
+    if (_boundsTimer) clearTimeout(_boundsTimer);
+    _boundsTimer = setTimeout(() => {
+      if (!win.isDestroyed() && !win.isMaximized() && !win.isMinimized()) {
+        const b = win.getBounds();
+        hermesSettings.setWindowBounds({ ...b, isMaximized: false });
+      }
+    }, 500);
+  };
+  win.on('resize', saveBounds);
+  win.on('move', saveBounds);
 
   win.on('page-title-updated', (event, title) => {
     event.preventDefault();
@@ -591,6 +620,23 @@ function createWindow() {
   });
 
   win.loadURL('app://telegram/');
+
+  // Показываем окно только когда контент готов (предотвращает чёрный экран при запуске)
+  let _readyShown = false;
+  const showWin = () => {
+    if (_readyShown || win.isDestroyed()) return;
+    _readyShown = true;
+    if (savedBounds && savedBounds.isMaximized) {
+      win.maximize();
+    } else {
+      win.show();
+    }
+  };
+  win.once('ready-to-show', showWin);
+  // Watchdog: если ready-to-show не сработал за 8 секунд — принудительно показываем
+  setTimeout(() => {
+    if (!win.isDestroyed()) showWin();
+  }, 8000);
 
   win.on('close', (event) => {
     const disableCloseToTray = hermesSettings.getCloseToTrayDisabled();
