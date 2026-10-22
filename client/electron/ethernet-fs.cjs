@@ -344,7 +344,17 @@ function registerHermesFsHandlers() {
         try { fs.unlinkSync(target); } catch {}
       }
     }
-    ethernetSettings.removeThemeWallpaper(cleanName);
+    try {
+      if (typeof ethernetSettings.removeThemeWallpaper === 'function') {
+        ethernetSettings.removeThemeWallpaper(cleanName);
+      } else if (typeof ethernetSettings.setThemeWallpaper === 'function') {
+        ethernetSettings.setThemeWallpaper(cleanName, null);
+      }
+    } catch {}
+
+    if (ethernetSettings.getTheme() === cleanName) {
+      ethernetSettings.setTheme(null);
+    }
     return true;
   });
 

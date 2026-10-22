@@ -283,10 +283,38 @@ const SettingsEthernetThemes: FC<OwnProps> = ({ isActive, onReset }) => {
 
   const handleDelete = useLastCallback(async () => {
     const api = window.ethernetDesktop || window.hermesDesktop;
-    if (!api || !deletingName) return;
-    await api.themeDelete(deletingName);
-    setDeletingName(undefined);
-    await loadThemes();
+    const loader = window.ethernet || window.hermes;
+    if (!api || !deletingName) {
+      setDeletingName(undefined);
+      return;
+    }
+    try {
+      const rawName = deletingName.replace(/\.(css|eth|json|eth-theme)$/i, '');
+      const isDeletingActive = themes?.some((t) => t.active && (t.name === deletingName || t.rawName === rawName));
+
+      await api.themeDelete(deletingName);
+
+      if (isDeletingActive) {
+        await api.themeActivate(null);
+        if (loader?.clearTheme) {
+          await loader.clearTheme();
+        }
+        const defaultMod = (await api.modGet()) || {};
+        const finalMod = {
+          ...defaultMod,
+          colors: (defaultMod.colors && Object.keys(defaultMod.colors).length > 0)
+            ? defaultMod.colors
+            : { ...ETH_DEFAULT_COLORS },
+        };
+        if (loader?.applyMod) loader.applyMod(finalMod);
+      }
+    } catch (err) {
+      console.error('[ethernet] delete theme error', err);
+    } finally {
+      setDeletingName(undefined);
+      await loadThemes();
+      window.dispatchEvent(new CustomEvent('ethernet:plugins-updated'));
+    }
   });
 
   const isDefaultActive = !themes?.some((t) => t.active);
@@ -482,12 +510,12 @@ const SettingsEthernetThemes: FC<OwnProps> = ({ isActive, onReset }) => {
                       title: getEthernetString(lang, 'EthernetEditCssCode'),
                       icon: 'edit',
                       handler: () => handleOpenEditor(displayName),
-                    }, {
+                    }, ...(theme.rawName !== 'eth' && theme.name !== 'eth.css' && theme.rawName !== 'default' ? [{
                       title: lang('Delete'),
                       icon: 'delete',
                       destructive: true,
                       handler: () => setDeletingName(theme.name),
-                    }]}
+                    }] : [])]}
                   >
                     <div className={styles.themeTitleRow}>
                       <span className="title">{displayName}</span>

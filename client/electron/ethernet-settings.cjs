@@ -294,6 +294,9 @@ module.exports = {
     write(s);
     return s.themeWallpapers[t] || null;
   },
+  removeThemeWallpaper: (themeName) => {
+    return module.exports.setThemeWallpaper(themeName, null);
+  },
   // Активные hermes-обои (slug файла в wallpapers/)
   getWallpaper: () => {
     const s = read();
