@@ -38,6 +38,7 @@ function createNotificationWindow(mainWindow) {
       preload: path.join(__dirname, 'preload-notif.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: true,
       backgroundThrottling: true,
     },
   });

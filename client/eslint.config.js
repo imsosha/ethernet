@@ -228,4 +228,10 @@ export default defineConfig(
       },
     },
   },
+  {
+    // Тесты Electron-слоя лежат вне tsconfig-проекта (include: ["src"]),
+    // поэтому type-aware правила ESLint для них отключаем.
+    files: ['electron/__tests__/**/*.ts'],
+    extends: [tseslint.configs.disableTypeChecked],
+  },
 );
