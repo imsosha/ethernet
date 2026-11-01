@@ -552,12 +552,68 @@
   const activePluginInstances = new Map();
   const pluginSettingsViews = new Map();
 
+  // Санитизация HTML, который плагин внедряет в контейнер настроек:
+  // вырезаем скрипты/фреймы, обработчики событий и опасные URI.
+  const SETTINGS_FORBIDDEN_TAGS = new Set(['script', 'iframe', 'frame', 'object', 'embed', 'applet', 'link', 'meta', 'base']);
+  const SETTINGS_URI_ATTRS = new Set(['href', 'src', 'action', 'formaction']);
+
+  function isSafeSettingsUri(value) {
+    const v = String(value || '').trim().toLowerCase().replace(/[\s]+/g, '');
+    return !v.startsWith('javascript:') && !v.startsWith('vbscript:') && !v.startsWith('data:text') && !v.startsWith('data:application');
+  }
+
+  function sanitizeSettingsNode(root) {
+    for (const el of Array.from(root.querySelectorAll('*'))) {
+      if (SETTINGS_FORBIDDEN_TAGS.has(el.tagName.toLowerCase())) {
+        el.remove();
+        continue;
+      }
+      for (const attr of Array.from(el.attributes)) {
+        const name = attr.name.toLowerCase();
+        if (name.startsWith('on') || (SETTINGS_URI_ATTRS.has(name) && !isSafeSettingsUri(attr.value))) {
+          el.removeAttribute(attr.name);
+        }
+      }
+    }
+  }
+
+  function sanitizeSettingsHtml(html) {
+    const tpl = document.createElement('template');
+    tpl.innerHTML = String(html);
+    sanitizeSettingsNode(tpl.content);
+    return tpl.innerHTML;
+  }
+
+  // Обёртка контейнера: собственные свойства-аксессоры затеняют prototype-геттеры
+  // Element.prototype.innerHTML / outerHTML, поэтому любое присваивание плагина
+  // проходит через санитизацию.
+  function hardenSettingsContainer(container) {
+    for (const prop of ['innerHTML', 'outerHTML']) {
+      try {
+        Object.defineProperty(container, prop, {
+          configurable: true,
+          get() {
+            return Element.prototype[prop].get.call(container);
+          },
+          set(value) {
+            Element.prototype[prop].set.call(container, sanitizeSettingsHtml(value));
+          },
+        });
+      } catch {}
+    }
+    const originalInsertAdjacent = container.insertAdjacentHTML?.bind(container);
+    if (originalInsertAdjacent) {
+      container.insertAdjacentHTML = (position, text) => originalInsertAdjacent(position, sanitizeSettingsHtml(text));
+    }
+    return container;
+  }
+
   window.__ethernetRenderPluginSettings = (pluginId, container) => {
     const fn = pluginSettingsViews.get(pluginId);
     if (typeof fn === 'function') {
       try {
-        container.innerHTML = '';
-        fn(container);
+        container.replaceChildren();
+        fn(hardenSettingsContainer(container));
         return true;
       } catch (e) {
         console.error(`[ethernet:settings] Error rendering settings for "${pluginId}":`, e);
@@ -941,9 +997,26 @@
     }) : undefined;
 
     const windowTarget = Object.create(window);
+
+    // Отслеживание перезаписи глобалов: на teardown восстанавливаем исходные значения.
+    const UNSET_SENTINEL = Symbol('ethernet-unset');
+    const overwrittenWindowProps = new Map();
+    const overwrittenDocProps = new Map();
+
+    // Динамическое выполнение кода и доступ к внешним фреймам запрещены всегда:
+    // это главные пути обхода песочницы (window.eval, Function(...), window.top...).
+    const blockedDynamicEval = () => {
+      throw new Error(`[ethernet:security] Plugin "${pluginId}": динамическое выполнение кода (eval/Function) запрещено.`);
+    };
+    const FORBIDDEN_WINDOW_PROPS = new Set(['eval', 'execScript', 'Function', 'top', 'parent', 'opener', 'frames']);
+
     const sandboxedWindow = new Proxy(windowTarget, {
       get(_target, prop) {
         if (prop === 'window' || prop === 'self' || prop === 'globalThis') return sandboxedWindow;
+        if (FORBIDDEN_WINDOW_PROPS.has(prop)) {
+          console.warn(`[ethernet:security] Plugin "${pluginId}" attempted to access forbidden window.${String(prop)}.`);
+          return typeof prop === 'string' && (prop === 'eval' || prop === 'execScript' || prop === 'Function') ? blockedDynamicEval : undefined;
+        }
         if (prop === 'document') return sandboxedDocument;
         if (prop === 'ethernet' || prop === 'hermes') return sandboxedEthernet;
         if (prop === 'localStorage') return sandboxedLocalStorage;
@@ -990,15 +1063,26 @@
         return typeof val === 'function' ? val.bind(window) : val;
       },
       set(_target, prop, val) {
-        window[prop] = val;
+        // Перезапись глобалов разрешена (для совместимости), но отслеживается:
+        // при выгрузке плагина исходные значения восстанавливаются.
+        try {
+          if (!overwrittenWindowProps.has(prop)) {
+            overwrittenWindowProps.set(prop, Object.prototype.hasOwnProperty.call(window, prop) ? window[prop] : UNSET_SENTINEL);
+          }
+          window[prop] = val;
+        } catch {}
         return true;
       },
       has(_target, prop) {
         return prop in window;
       },
     });
-
     const documentTarget = Object.create(document);
+
+    // Элементы, позволяющие плагину выполнить произвольный код или встроить
+    // чужой документ в приложение, создаются только при явном разрешении.
+    const FORBIDDEN_TAGS = new Set(['script', 'iframe', 'frame', 'frameset', 'object', 'embed', 'applet']);
+
     const sandboxedDocument = new Proxy(documentTarget, {
       get(_target, prop) {
         if (prop === 'defaultView') return sandboxedWindow;
@@ -1007,6 +1091,10 @@
             console.warn(`[ethernet:security] Blocked plugin "${pluginId}" from reading cookies without credentials permission.`);
             return '';
           }
+        }
+        if (prop === 'write' || prop === 'writeln' || prop === 'domain' || prop === 'execCommand') {
+          console.warn(`[ethernet:security] Plugin "${pluginId}" attempted to access forbidden document.${String(prop)}.`);
+          return () => {};
         }
         if (prop === 'addEventListener') {
           return (type, listener, options) => {
@@ -1022,6 +1110,10 @@
         }
         if (prop === 'createElement') {
           return (tag, options) => {
+            if (typeof tag === 'string' && FORBIDDEN_TAGS.has(tag.toLowerCase())) {
+              console.warn(`[ethernet:security] Plugin "${pluginId}" attempted to create forbidden element <${tag.toLowerCase()}>.`);
+              throw new DOMException(`Forbidden element <${tag.toLowerCase()}>`, 'SecurityError');
+            }
             const el = document.createElement(tag, options);
             try { el.dataset.ethernetPlugin = pluginId; } catch {}
             trackedDOMElements.add(el);
@@ -1032,7 +1124,12 @@
         return typeof val === 'function' ? val.bind(document) : val;
       },
       set(_target, prop, val) {
-        document[prop] = val;
+        try {
+          if (!overwrittenDocProps.has(prop)) {
+            overwrittenDocProps.set(prop, Object.prototype.hasOwnProperty.call(document, prop) ? document[prop] : UNSET_SENTINEL);
+          }
+          document[prop] = val;
+        } catch {}
         return true;
       },
       has(_target, prop) {
@@ -1082,12 +1179,30 @@
       trackedDOMElements.clear();
       document.querySelectorAll(`[data-ethernet-plugin="${pluginId}"], [data-plugin-id="${pluginId}"]`).forEach((el) => el.remove());
 
+      // Восстанавливаем глобалы, перезаписанные плагином (window.fetch = ..., и т.п.)
+      for (const [prop, original] of overwrittenWindowProps) {
+        try {
+          if (original === UNSET_SENTINEL) delete window[prop];
+          else window[prop] = original;
+        } catch {}
+      }
+      overwrittenWindowProps.clear();
+      for (const [prop, original] of overwrittenDocProps) {
+        try {
+          if (original === UNSET_SENTINEL) delete document[prop];
+          else document[prop] = original;
+        } catch {}
+      }
+      overwrittenDocProps.clear();
+
       console.info(`[ethernet:sandbox] Plugin "${pluginId}" successfully unloaded.`);
     };
 
     activePluginInstances.set(pluginId, { teardown, manifest: pluginMeta });
 
-    // 5. Запуск плагина в изолированной области видимости
+    // 5. Запуск плагина в изолированной области видимости.
+    // Параметры eval / Function / globalThis затеняют реальные глобалы:
+    // внутри тела раннера они указывают на заблокированные заглушки.
     try {
       const runner = new Function(
         'ethernet',
@@ -1102,6 +1217,9 @@
         'clearInterval',
         'requestAnimationFrame',
         'cancelAnimationFrame',
+        'eval',
+        'Function',
+        'globalThis',
         `"use strict";\n` + code + `\n//# sourceURL=/ethernet/plugins/${encodeURIComponent(pluginId)}/index.js`
       );
 
@@ -1118,26 +1236,22 @@
         sandboxedSetInterval,
         sandboxedClearInterval,
         sandboxedRAF,
-        sandboxedCAF
+        sandboxedCAF,
+        blockedDynamicEval,
+        blockedDynamicEval,
+        sandboxedWindow
       );
       console.info(`[ethernet:sandbox] Plugin "${pluginId}" running with permissions:`, Object.keys(granted).filter((p) => granted[p]));
     } catch (err) {
       const errStr = String(err);
       if (errStr.includes('Content Security Policy') || errStr.includes('unsafe-eval') || err.name === 'EvalError') {
-        console.warn(`[ethernet:sandbox] CSP blocked new Function for "${pluginId}". Falling back to dynamic script tag.`);
-        try {
-          window.__ethernetCurrentPlugin = sandboxedEthernet;
-          const s = document.createElement('script');
-          s.dataset.ethernetPlugin = pluginId;
-          s.src = `/ethernet/plugins/${encodeURIComponent(pluginId)}/index.js`;
-          (document.head || document.documentElement).appendChild(s);
-          trackedDOMElements.add(s);
-          return;
-        } catch (scriptErr) {
-          console.error(`[ethernet:sandbox] Script tag fallback failed for "${pluginId}":`, scriptErr);
-        }
+        // Раньше здесь был фоллбэк на <script>, который запускал код плагина
+        // с настоящими глобалами — это полностью обнуляло песочницу.
+        // Теперь CSP-блокировка означает сбой плагина и Safe Mode.
+        handlePluginCrash(pluginId, 'CSP blocked plugin execution (unsafe-eval denied)');
+      } else {
+        handlePluginCrash(pluginId, err.message || String(err));
       }
-      handlePluginCrash(pluginId, err.message || String(err));
     }
   }
 
@@ -1187,6 +1301,95 @@
 
   window.addEventListener('ethernet:plugins-updated', loadActivePlugins);
 
+  // 5. Проверка обновлений: GitHub Releases -> баннер с новой версией.
+  const UPDATE_CHECK_URL = 'https://api.github.com/repos/imsosha/ethernet/releases/latest';
+  const UPDATE_CHECK_INTERVAL_MS = 12 * 60 * 60 * 1000; // не чаще раза в 12 часов
+
+  function parseVersionTuple(version) {
+    return String(version || '').trim().replace(/^[vV]+/, '').split(/[.\-+]/).map((part) => parseInt(part, 10) || 0);
+  }
+
+  function isNewerVersion(remote, current) {
+    const remoteTuple = parseVersionTuple(remote);
+    const currentTuple = parseVersionTuple(current);
+    const len = Math.max(remoteTuple.length, currentTuple.length);
+    for (let i = 0; i < len; i++) {
+      const r = remoteTuple[i] || 0;
+      const c = currentTuple[i] || 0;
+      if (r !== c) return r > c;
+    }
+    return false;
+  }
+
+  function showUpdateBanner(releaseUrl, newVersion) {
+    if (document.getElementById('ethernet-update-banner')) return;
+
+    const banner = document.createElement('div');
+    banner.id = 'ethernet-update-banner';
+    banner.style.cssText = [
+      'position:fixed', 'bottom:16px', 'left:50%', 'transform:translateX(-50%)',
+      'z-index:2147483647', 'display:flex', 'align-items:center', 'gap:10px',
+      'background:var(--color-background-secondary, #212328)', 'color:var(--color-text, #f3f4f6)',
+      'border:1px solid var(--color-borders, #2a2d34)', 'border-radius:14px',
+      'padding:10px 14px', 'box-shadow:0 8px 24px rgba(0,0,0,.35)',
+      'font-family:inherit', 'font-size:14px', 'white-space:nowrap',
+    ].join(';');
+    banner.textContent = `Доступна новая версия Ethernet v${newVersion}`;
+
+    const updateBtn = document.createElement('button');
+    updateBtn.textContent = 'Обновить';
+    updateBtn.style.cssText = [
+      'background:var(--color-primary, #3b82f6)', 'color:#fff', 'border:none', 'border-radius:10px',
+      'padding:6px 14px', 'font-size:13px', 'font-weight:600', 'cursor:pointer', 'font-family:inherit',
+    ].join(';');
+    updateBtn.onclick = () => window.open(releaseUrl, '_blank');
+
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '✕';
+    closeBtn.title = 'Скрыть';
+    closeBtn.style.cssText = [
+      'background:none', 'border:none', 'color:var(--color-text-secondary, #9da7b7)',
+      'font-size:14px', 'cursor:pointer', 'padding:2px 6px', 'font-family:inherit',
+    ].join(';');
+    closeBtn.onclick = () => {
+      banner.remove();
+      try { localStorage.setItem('eth_update_dismissed', newVersion); } catch {}
+    };
+
+    banner.append(updateBtn, closeBtn);
+    document.body.appendChild(banner);
+  }
+
+  async function checkForUpdates() {
+    try {
+      // Не проверяем чаще раза в 12 часов и не показываем скрытую версию.
+      const lastCheck = parseInt(localStorage.getItem('eth_update_check_last') || '0', 10);
+      if (Date.now() - lastCheck < UPDATE_CHECK_INTERVAL_MS) return;
+
+      const versionRes = await fetch('/version.txt', { cache: 'no-store' });
+      if (!versionRes.ok) return;
+      const currentVersion = (await versionRes.text()).trim();
+
+      localStorage.setItem('eth_update_check_last', String(Date.now()));
+
+      const releaseRes = await fetch(UPDATE_CHECK_URL, { cache: 'no-store' });
+      if (!releaseRes.ok) return;
+      const release = await releaseRes.json();
+      const tag = String(release?.tag_name || '').trim();
+      const releaseUrl = String(release?.html_url || 'https://github.com/imsosha/ethernet/releases/latest');
+      if (!tag) return;
+
+      const dismissed = localStorage.getItem('eth_update_dismissed');
+      if (dismissed && parseVersionTuple(dismissed).join('.') === parseVersionTuple(tag).join('.')) return;
+
+      if (isNewerVersion(tag, currentVersion)) {
+        showUpdateBanner(releaseUrl, tag.replace(/^[vV]+/, ''));
+      }
+    } catch (e) {
+      // Нет сети / GitHub недоступен — это не ошибка приложения.
+      console.debug('[ethernet] update check skipped:', e?.message || e);
+    }
+  }
 
   loadAndApplyAll();
   loadActivePlugins();
@@ -1202,6 +1405,7 @@
   });
   setTimeout(loadAndApplyAll, 300);
   setTimeout(loadAndApplyAll, 1200);
+  setTimeout(checkForUpdates, 5000);
 
   // Следим за сменой light/dark без периодических таймеров
   let lastClientTheme = document.documentElement.className.match(/theme-(light|dark)/)?.[1];

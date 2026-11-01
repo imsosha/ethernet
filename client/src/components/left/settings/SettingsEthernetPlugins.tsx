@@ -1,23 +1,24 @@
 import type { FC } from '../../../lib/teact/teact';
 import { memo, useEffect, useRef, useState } from '../../../lib/teact/teact';
+import { getActions } from '../../../global';
 
-import useLang from '../../../hooks/useLang';
-import useLastCallback from '../../../hooks/useLastCallback';
 import buildClassName from '../../../util/buildClassName';
 import { getEthernetString } from '../../../util/ethernetLang';
 import { formatVersion, isSvgIcon, sanitizeSvg } from '../../../util/svgIconUtils';
-import { getActions } from '../../../global';
 
+import useLang from '../../../hooks/useLang';
+import useLastCallback from '../../../hooks/useLastCallback';
+
+import Icon from '../../common/icons/Icon';
+import Island from '../../gili/layout/Island';
 import Button from '../../ui/Button';
 import ConfirmDialog from '../../ui/ConfirmDialog';
 import InputText from '../../ui/InputText';
 import ListItem from '../../ui/ListItem';
 import Loading from '../../ui/Loading';
 import Modal from '../../ui/Modal';
-import TextArea from '../../ui/TextArea';
 import Switcher from '../../ui/Switcher';
-import Island from '../../gili/layout/Island';
-import Icon from '../../common/icons/Icon';
+import TextArea from '../../ui/TextArea';
 import DocumentationModal from './DocumentationModal';
 
 import styles from './SettingsEthernetPlugins.module.scss';
@@ -97,7 +98,7 @@ const SettingsEthernetPlugins: FC<OwnProps> = ({ isActive, onReset }) => {
       clearTimeout(t);
       window.removeEventListener('ethernet:plugins-updated', handleUpdate);
       if (customSettingsRef.current) {
-        customSettingsRef.current.innerHTML = '';
+        customSettingsRef.current.replaceChildren();
       }
     };
   }, [selectedPluginForSettings]);
@@ -197,7 +198,7 @@ const SettingsEthernetPlugins: FC<OwnProps> = ({ isActive, onReset }) => {
         ...p,
         grantedPermissions: updatedGranted,
         hasActiveDangerousPermissions: (p.permissions || []).some((perm) =>
-          DANGEROUS_PERMS_SET.has(perm) && updatedGranted[perm] !== false
+          DANGEROUS_PERMS_SET.has(perm) && updatedGranted[perm] !== false,
         ),
       };
     }));
@@ -209,7 +210,7 @@ const SettingsEthernetPlugins: FC<OwnProps> = ({ isActive, onReset }) => {
         ...prev,
         grantedPermissions: updatedGranted,
         hasActiveDangerousPermissions: (prev.permissions || []).some((perm) =>
-          DANGEROUS_PERMS_SET.has(perm) && updatedGranted[perm] !== false
+          DANGEROUS_PERMS_SET.has(perm) && updatedGranted[perm] !== false,
         ),
       };
     });
@@ -475,7 +476,12 @@ const SettingsEthernetPlugins: FC<OwnProps> = ({ isActive, onReset }) => {
                 <div className={styles.crashAlertHeader}>
                   <div style="display: flex; align-items: center; gap: 6px;">
                     <Icon name="warning" style="font-size: 1.125rem;" />
-                    <span>{getEthernetString(lang, 'EthernetSafeModePluginCrashed')}: {crashedInfo.id}</span>
+                    <span>
+                      {getEthernetString(lang, 'EthernetSafeModePluginCrashed')}
+                      :
+                      {' '}
+                      {crashedInfo.id}
+                    </span>
                   </div>
                   <button
                     type="button"
@@ -620,7 +626,10 @@ const SettingsEthernetPlugins: FC<OwnProps> = ({ isActive, onReset }) => {
                         }}
                       >
                         <Icon name="brush" className={styles.themeBadgeIcon} />
-                        <span>Тема: {plugin.themeDependency || plugin.requiredForTheme}</span>
+                        <span>
+                          Тема:
+                          {plugin.themeDependency || plugin.requiredForTheme}
+                        </span>
                       </span>
                     )}
                     {plugin.hasDangerousPermissions && (
@@ -741,7 +750,10 @@ const SettingsEthernetPlugins: FC<OwnProps> = ({ isActive, onReset }) => {
                 <div style="margin-top: 6px;">
                   <span className={styles.themeDepBadge}>
                     <Icon name="brush" className={styles.themeBadgeIcon} />
-                    <span>Требуется для работы темы: {selectedPluginForSettings.themeDependency || selectedPluginForSettings.requiredForTheme}</span>
+                    <span>
+                      Требуется для работы темы:
+                      {selectedPluginForSettings.themeDependency || selectedPluginForSettings.requiredForTheme}
+                    </span>
                   </span>
                 </div>
               )}

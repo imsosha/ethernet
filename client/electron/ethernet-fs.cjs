@@ -967,4 +967,12 @@ function registerHermesFsHandlers() {
   });
 }
 
-module.exports = { registerHermesFsHandlers, registerEthernetFsHandlers: registerHermesFsHandlers };
+module.exports = {
+  registerHermesFsHandlers,
+  registerEthernetFsHandlers: registerHermesFsHandlers,
+  // Экспортировано для юнит-тестов
+  analyzePluginSecurity,
+  parsePluginMetadata,
+  parseDeclaredPermissions,
+  cleanVersion,
+};
