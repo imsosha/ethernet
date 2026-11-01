@@ -58,6 +58,20 @@ function readJson(file, fallback) {
   try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return fallback; }
 }
 
+// Защита от symlink-эскейпа: путь считается валидным, только если
+// его РЕАЛЬНОЕ расположение (после разрешения символических ссылок
+// и junction-точек) лежит внутри реального каталога-родителя.
+// Требует существования файла (как и все места вызова).
+function isRealPathInside(targetPath, parentDir) {
+  try {
+    const realTarget = fs.realpathSync(path.resolve(targetPath));
+    const realParent = fs.realpathSync(path.resolve(parentDir));
+    return realTarget.toLowerCase().startsWith((realParent + path.sep).toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
 function listPlugins() {
   let dirs = [];
   try { dirs = fs.readdirSync(PLUGINS_DIR, { withFileTypes: true }); } catch { return []; }
@@ -184,7 +198,7 @@ function registerAppProtocol() {
           ];
           const resolvedThemes = path.resolve(THEMES_DIR);
           for (const target of candidates) {
-            if (target.toLowerCase().startsWith((resolvedThemes + path.sep).toLowerCase()) && fs.existsSync(target)) {
+            if (fs.existsSync(target) && isRealPathInside(target, THEMES_DIR) && target.toLowerCase().startsWith((resolvedThemes + path.sep).toLowerCase())) {
               const fileContent = fs.readFileSync(target, 'utf8');
               if (target.endsWith('.css')) {
                 return new Response(fileContent, {
@@ -290,7 +304,7 @@ function registerAppProtocol() {
             } catch {}
           }
         }
-        if (target.toLowerCase().startsWith((resolvedWallpapers + path.sep).toLowerCase()) && fs.existsSync(target)) {
+        if (fs.existsSync(target) && isRealPathInside(target, WALLPAPERS_DIR) && target.toLowerCase().startsWith((resolvedWallpapers + path.sep).toLowerCase())) {
           const ext = path.extname(file).toLowerCase();
           const mimeTypes = {
             '.mp4': 'video/mp4',
@@ -367,7 +381,7 @@ function registerAppProtocol() {
       }
 
       // Если файл существует на диске — отдаём его:
-      if (fs.existsSync(filePath) && !fs.statSync(filePath).isDirectory()) {
+      if (fs.existsSync(filePath) && !fs.statSync(filePath).isDirectory() && isRealPathInside(filePath, DIST)) {
         return net.fetch(pathToFileURL(filePath).toString());
       }
 
@@ -380,7 +394,11 @@ function registerAppProtocol() {
       const indexPath = path.join(DIST, 'index.html');
       if (fs.existsSync(indexPath)) {
         let html = fs.readFileSync(indexPath, 'utf8');
-        // Разрешаем unsafe-eval в CSP для безопасной песочницы плагинов
+        // WIDE CSP: 'unsafe-eval' необходим рантайму плагинов — код плагина
+        // исполняется через new Function в главном рендерере (см. loader.js).
+        // Это осознанный компромисс текущей архитектуры: полная изоляция
+        // (iframe/Worker с postMessage-RPC) — отдельная задача; до неё
+        // sandbox плагинов опирается на Proxy-ограничения и permission-модель.
         html = html.replace(/script-src\s+'self'(\s+'wasm-unsafe-eval')?/, "script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'");
         const inject = `<script src="/ethernet/loader.js"></script>`;
         if (!html.includes(inject)) html = html.replace('</head>', `${inject}\n</head>`);

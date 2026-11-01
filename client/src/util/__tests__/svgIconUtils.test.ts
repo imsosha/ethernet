@@ -39,6 +39,26 @@ describe('sanitizeSvg', () => {
     expect(result).not.toContain('<animate');
   });
 
+  it('вырезает обработчики событий у корневого <svg>', () => {
+    const svg = '<svg viewBox="0 0 24 24" onload="alert(1)" onerror="alert(2)"><path d="M0 0"/></svg>';
+    const result = sanitizeSvg(svg);
+    expect(result).not.toContain('onload');
+    expect(result).not.toContain('onerror');
+    expect(result).not.toContain('alert(1)');
+  });
+
+  it('блокирует javascript: URI у корневого <svg>', () => {
+    const svg = '<svg viewBox="0 0 24 24" href="javascript:alert(1)"><path d="M0 0"/></svg>';
+    const result = sanitizeSvg(svg);
+    expect(result.toLowerCase()).not.toContain('javascript:');
+  });
+
+  it('вырезает опасный style у корневого <svg>', () => {
+    const svg = '<svg viewBox="0 0 24 24" style="background:url(javascript:alert(1))"><path d="M0 0"/></svg>';
+    const result = sanitizeSvg(svg);
+    expect(result.toLowerCase()).not.toContain('javascript:');
+  });
+
   it('вырезает foreignObject и use', () => {
     const svg = '<svg viewBox="0 0 24 24"><foreignObject><body>x</body></foreignObject>'
       + '<use href="data:image/svg+xml;base64,PHN2Zz48c2NyaXB0PmFsZXJ0KDEpPC9zY3JpcHQ+PC9zdmc+"/><path d="M0 0"/></svg>';

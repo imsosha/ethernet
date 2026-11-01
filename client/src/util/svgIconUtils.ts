@@ -45,20 +45,21 @@ function hasDangerousStyle(value: string): boolean {
 }
 
 function sanitizeElement(el: Element): void {
-  // 1. Удаляем запрещённые дочерние элементы (рекурсивно, по снимку списка).
+  // 1. Чистим атрибуты самого элемента — включая корневой <svg>:
+  // обработчики событий, опасные URI, опасные стили.
+  for (const attr of Array.from(el.attributes)) {
+    const name = attr.name.toLowerCase();
+    if (name.startsWith('on')
+      || (URI_ATTRS.has(name) && !isSafeUri(attr.value))
+      || (name === 'style' && hasDangerousStyle(attr.value))) {
+      el.removeAttribute(attr.name);
+    }
+  }
+  // 2. Удаляем запрещённые дочерние элементы и чистим детей рекурсивно.
   for (const child of Array.from(el.children)) {
     if (FORBIDDEN_TAGS.has(child.tagName.toLowerCase())) {
       child.remove();
       continue;
-    }
-    // 2. Чистим атрибуты: обработчики событий, опасные URI, опасные стили.
-    for (const attr of Array.from(child.attributes)) {
-      const name = attr.name.toLowerCase();
-      if (name.startsWith('on')
-        || (URI_ATTRS.has(name) && !isSafeUri(attr.value))
-        || (name === 'style' && hasDangerousStyle(attr.value))) {
-        child.removeAttribute(attr.name);
-      }
     }
     sanitizeElement(child);
   }
